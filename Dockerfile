@@ -12,7 +12,7 @@ COPY . .
 
 RUN CGO_ENABLED=0 go build -o app
 
-FROM gcr.io/distroless/base-debian11
+FROM gcr.io/distroless/base-debian13
 COPY --from=builder /goapp /
 
 ENV PORT=8000
