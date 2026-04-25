@@ -88,5 +88,5 @@ func fetch(endpoint string, v any) error {
 }
 
 func totalPages(total, pageSize int) int {
-	return int(math.Ceil(float64(total / pageSize)))
+	return int(math.Ceil(float64(total) / float64(pageSize)))
 }
