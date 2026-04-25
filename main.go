@@ -11,7 +11,8 @@ import (
 )
 
 func main() {
-	checkAPIKey()
+	apiKey := parseAPIKey()
+	h := newNewsHandler(apiKey, tpl)
 
 	port := getPort()
 	mux := http.NewServeMux()
@@ -26,8 +27,8 @@ func main() {
 	fs := http.FileServer(http.Dir("assets"))
 	mux.Handle("/assets/", http.StripPrefix("/assets/", fs))
 
-	mux.HandleFunc("/search", searchHandler)
-	mux.HandleFunc("/", indexHandler)
+	mux.HandleFunc("/search", h.search)
+	mux.HandleFunc("/", h.index)
 
 	log.Printf("starting http server on port: %s", port)
 
