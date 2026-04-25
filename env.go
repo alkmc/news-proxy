@@ -8,10 +8,7 @@ import (
 	"time"
 )
 
-var (
-	tpl    = template.Must(template.ParseFiles("index.html"))
-	apiKey *string
-)
+var tpl = template.Must(template.ParseFiles("index.html"))
 
 const (
 	readR   = 5 * time.Second   // max time to read request from the client
@@ -22,18 +19,18 @@ const (
 )
 
 func getPort() string {
-	port := os.Getenv("PORT")
-	if port == "" {
-		return port
+	if p := os.Getenv("PORT"); p != "" {
+		return ":" + p
 	}
-	return ":" + port
+	return port
 }
 
-func checkAPIKey() {
-	apiKey = flag.String("apiKey", "", "newsapi.org access key")
+func parseAPIKey() string {
+	apiKey := flag.String("apiKey", "", "newsapi.org access key")
 	flag.Parse()
 
 	if *apiKey == "" {
 		log.Fatal("apiKey must be set")
 	}
+	return *apiKey
 }

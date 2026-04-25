@@ -5,16 +5,32 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"log"
 	"math"
 	"net/http"
 	"net/url"
 	"strconv"
+	"time"
 )
 
-func indexHandler(w http.ResponseWriter, r *http.Request) {
+type newsHandler struct {
+	apiKey     string
+	tpl        *template.Template
+	httpClient *http.Client
+}
+
+func newNewsHandler(apiKey string, tpl *template.Template) *newsHandler {
+	return &newsHandler{
+		apiKey:     apiKey,
+		tpl:        tpl,
+		httpClient: &http.Client{Timeout: 10 * time.Second},
+	}
+}
+
+func (h *newsHandler) index(w http.ResponseWriter, r *http.Request) {
 	var buf bytes.Buffer
-	if err := tpl.Execute(&buf, nil); err != nil {
+	if err := h.tpl.Execute(&buf, nil); err != nil {
 		log.Printf("template execution error: %v", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
@@ -24,7 +40,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func searchHandler(w http.ResponseWriter, r *http.Request) {
+func (h *newsHandler) search(w http.ResponseWriter, r *http.Request) {
 	u, err := url.Parse(r.URL.String())
 	if err != nil {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -53,9 +69,10 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		pageSize = 20
 	)
 
-	endpoint := fmt.Sprintf(URL, url.QueryEscape(s.SearchKey), pageSize, s.NextPage, *apiKey)
-	if err := fetch(endpoint, &s.Results); err != nil {
+	endpoint := fmt.Sprintf(URL, url.QueryEscape(s.SearchKey), pageSize, s.NextPage, h.apiKey)
+	if err := h.fetch(endpoint, &s.Results); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	s.TotalPages = totalPages(s.Results.TotalResults, pageSize)
@@ -65,7 +82,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var buf bytes.Buffer
-	if err := tpl.Execute(&buf, s); err != nil {
+	if err := h.tpl.Execute(&buf, s); err != nil {
 		log.Printf("template execution error: %v", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
@@ -75,8 +92,8 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func fetch(endpoint string, v any) error {
-	resp, err := http.Get(endpoint)
+func (h *newsHandler) fetch(endpoint string, v any) error {
+	resp, err := h.httpClient.Get(endpoint)
 	if resp != nil {
 		defer resp.Body.Close()
 	}
