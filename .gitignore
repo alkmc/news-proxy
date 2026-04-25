@@ -4,3 +4,5 @@ idea/
 *.iml
 *.exe
 .vscode
+.DS_Store
+*.out
