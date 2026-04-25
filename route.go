@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,7 +13,15 @@ import (
 )
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
-	tpl.Execute(w, nil)
+	var buf bytes.Buffer
+	if err := tpl.Execute(&buf, nil); err != nil {
+		log.Printf("template execution error: %v", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	if _, err := buf.WriteTo(w); err != nil {
+		log.Printf("error writing response: %v", err)
+	}
 }
 
 func searchHandler(w http.ResponseWriter, r *http.Request) {
@@ -54,8 +63,15 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	if ok := !s.IsLastPage(); ok {
 		s.NextPage++
 	}
-	if err := tpl.Execute(w, s); err != nil {
-		log.Fatal(err)
+
+	var buf bytes.Buffer
+	if err := tpl.Execute(&buf, s); err != nil {
+		log.Printf("template execution error: %v", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	if _, err := buf.WriteTo(w); err != nil {
+		log.Printf("error writing response: %v", err)
 	}
 }
 
