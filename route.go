@@ -59,7 +59,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func fetch(endpoint string, v interface{}) error {
+func fetch(endpoint string, v any) error {
 	resp, err := http.Get(endpoint)
 	if resp != nil {
 		defer resp.Body.Close()
