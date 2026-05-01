@@ -38,13 +38,14 @@ func (h *NewsHandler) Search(w http.ResponseWriter, r *http.Request) {
 
 	next, err := strconv.Atoi(page)
 	if err != nil {
-		http.Error(w, "unexpected server error", http.StatusInternalServerError)
+		http.Error(w, "invalid page parameter", http.StatusBadRequest)
 		return
 	}
 
 	results, err := h.client.Fetch(r.Context(), searchKey, next)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		h.logger.Error("failed to fetch news", slog.Any("error", err))
+		http.Error(w, "failed to fetch news", http.StatusInternalServerError)
 		return
 	}
 
