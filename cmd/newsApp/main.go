@@ -34,7 +34,9 @@ func run(logger *slog.Logger) error {
 	if err != nil {
 		return fmt.Errorf("failed to parse template: %w", err)
 	}
-	h := api.NewNewsHandler(apiKey, tpl, logger)
+
+	client := api.NewClient(apiKey, config.PageSize, logger)
+	h := api.NewNewsHandler(client, tpl, logger)
 
 	port := config.GetPort()
 	mux := http.NewServeMux()

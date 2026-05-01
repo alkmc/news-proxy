@@ -2,31 +2,25 @@ package api
 
 import (
 	"bytes"
-	"encoding/json"
-	"errors"
-	"fmt"
 	"html/template"
 	"log/slog"
 	"math"
 	"net/http"
-	"net/url"
 	"strconv"
-	"time"
 )
 
 type NewsHandler struct {
-	apiKey     string
-	tpl        *template.Template
-	httpClient *http.Client
-	logger     *slog.Logger
+	client *Client
+	tpl    *template.Template
+	logger *slog.Logger
 }
 
-func NewNewsHandler(apiKey string, tpl *template.Template, logger *slog.Logger) *NewsHandler {
+func NewNewsHandler(client *Client, tpl *template.Template, logger *slog.Logger,
+) *NewsHandler {
 	return &NewsHandler{
-		apiKey:     apiKey,
-		tpl:        tpl,
-		httpClient: &http.Client{Timeout: 10 * time.Second},
-		logger:     logger,
+		client: client,
+		tpl:    tpl,
+		logger: logger,
 	}
 }
 
@@ -48,7 +42,7 @@ func (h *NewsHandler) Search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	results, err := h.fetchNews(searchKey, next)
+	results, err := h.client.Fetch(searchKey, next)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -58,24 +52,10 @@ func (h *NewsHandler) Search(w http.ResponseWriter, r *http.Request) {
 		SearchKey:   searchKey,
 		CurrentPage: next,
 		Results:     *results,
-		TotalPages:  totalPages(results.TotalResults, 20),
+		TotalPages:  totalPages(results.TotalResults, h.client.PageSize),
 	}
 
 	h.render(w, s)
-}
-
-func (h *NewsHandler) fetchNews(searchKey string, page int) (*results, error) {
-	const (
-		URL      = "https://newsapi.org/v2/everything?q=%s&pageSize=%d&page=%d&apiKey=%s&sortBy=publishedAt&language=en"
-		pageSize = 20
-	)
-
-	endpoint := fmt.Sprintf(URL, url.QueryEscape(searchKey), pageSize, page, h.apiKey)
-	var res results
-	if err := h.fetch(endpoint, &res); err != nil {
-		return nil, err
-	}
-	return &res, nil
 }
 
 func (h *NewsHandler) render(w http.ResponseWriter, data any) {
@@ -88,34 +68,6 @@ func (h *NewsHandler) render(w http.ResponseWriter, data any) {
 	if _, err := buf.WriteTo(w); err != nil {
 		h.logger.Error("error writing response", slog.Any("error", err))
 	}
-}
-
-func (h *NewsHandler) fetch(endpoint string, v any) error {
-	resp, err := h.httpClient.Get(endpoint)
-	if resp != nil {
-		defer resp.Body.Close()
-	}
-	if err != nil {
-		return errors.New("could not fetch data")
-	}
-
-	dec := json.NewDecoder(resp.Body)
-
-	if resp.StatusCode != http.StatusOK {
-		var newsErr newsAPIError
-		if err := dec.Decode(&newsErr); err != nil {
-			h.logger.Error("json decode error", slog.Any("error", err))
-			return errors.New("json decoding error")
-		}
-		return errors.New(newsErr.Message)
-	}
-
-	if err := dec.Decode(v); err != nil {
-		h.logger.Error("json decode error", slog.Any("error", err))
-		return errors.New("json decoding error")
-	}
-
-	return nil
 }
 
 func totalPages(total, pageSize int) int {
