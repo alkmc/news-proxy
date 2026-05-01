@@ -15,6 +15,7 @@ const (
 	ShutdownTimeout = 10 * time.Second  // max time to complete tasks before shutdown
 	defaultPort     = "3000"
 	PageSize        = 10
+	BaseURL  = "https://newsapi.org"
 )
 
 func GetPort() string {
