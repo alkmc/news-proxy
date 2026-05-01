@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"bytes"
@@ -14,15 +14,15 @@ import (
 	"time"
 )
 
-type newsHandler struct {
+type NewsHandler struct {
 	apiKey     string
 	tpl        *template.Template
 	httpClient *http.Client
 	logger     *slog.Logger
 }
 
-func newNewsHandler(apiKey string, tpl *template.Template, logger *slog.Logger) *newsHandler {
-	return &newsHandler{
+func NewNewsHandler(apiKey string, tpl *template.Template, logger *slog.Logger) *NewsHandler {
+	return &NewsHandler{
 		apiKey:     apiKey,
 		tpl:        tpl,
 		httpClient: &http.Client{Timeout: 10 * time.Second},
@@ -30,7 +30,7 @@ func newNewsHandler(apiKey string, tpl *template.Template, logger *slog.Logger) 
 	}
 }
 
-func (h *newsHandler) index(w http.ResponseWriter, r *http.Request) {
+func (h *NewsHandler) Index(w http.ResponseWriter, r *http.Request) {
 	var buf bytes.Buffer
 	if err := h.tpl.Execute(&buf, nil); err != nil {
 		h.logger.Error("template execution error", slog.Any("error", err))
@@ -42,7 +42,7 @@ func (h *newsHandler) index(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *newsHandler) search(w http.ResponseWriter, r *http.Request) {
+func (h *NewsHandler) Search(w http.ResponseWriter, r *http.Request) {
 	u, err := url.Parse(r.URL.String())
 	if err != nil {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -94,7 +94,7 @@ func (h *newsHandler) search(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *newsHandler) fetch(endpoint string, v any) error {
+func (h *NewsHandler) fetch(endpoint string, v any) error {
 	resp, err := h.httpClient.Get(endpoint)
 	if resp != nil {
 		defer resp.Body.Close()

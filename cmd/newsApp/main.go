@@ -8,6 +8,8 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/alkmc/firstGoApp/internal/api"
 )
 
 func main() {
@@ -20,24 +22,28 @@ func main() {
 }
 
 func run(logger *slog.Logger) error {
-	apiKey := parseAPIKey()
-	h := newNewsHandler(apiKey, tpl, logger)
+	apiKey, err := api.ParseAPIKey()
+	if err != nil {
+		return err
+	}
+	tpl := api.LoadTemplate("index.html")
+	h := api.NewNewsHandler(apiKey, tpl, logger)
 
-	port := getPort()
+	port := api.GetPort()
 	mux := http.NewServeMux()
 	s := http.Server{
 		Addr:         port,
 		Handler:      mux,
-		ReadTimeout:  readR,
-		WriteTimeout: writeR,
-		IdleTimeout:  keepA,
+		ReadTimeout:  api.ReadTimeout,
+		WriteTimeout: api.WriteTimeout,
+		IdleTimeout:  api.IdleTimeout,
 	}
 
 	fs := http.FileServer(http.Dir("assets"))
 	mux.Handle("/assets/", http.StripPrefix("/assets/", fs))
 
-	mux.HandleFunc("/search", h.search)
-	mux.HandleFunc("/", h.index)
+	mux.HandleFunc("/search", h.Search)
+	mux.HandleFunc("/", h.Index)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -53,11 +59,11 @@ func run(logger *slog.Logger) error {
 	<-ctx.Done()
 	logger.Info("signal closing server received")
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), timeout)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), api.ShutdownTimeout)
 	defer cancel()
 
 	if err := s.Shutdown(shutdownCtx); err != nil {
-		logger.Error("server shutdown failed", slog.Any("error", err))
+		return fmt.Errorf("server shutdown failed: %w", err)
 	}
 	logger.Info("server shutdown gracefully")
 	return nil
