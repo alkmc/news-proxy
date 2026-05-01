@@ -45,10 +45,9 @@ func run(logger *slog.Logger) error {
 		IdleTimeout:  api.IdleTimeout,
 	}
 
-	mux.Handle("/static/", http.FileServer(http.FS(web.FS)))
-
-	mux.HandleFunc("/search", h.Search)
-	mux.HandleFunc("/", h.Index)
+	mux.Handle("GET /static/", http.FileServer(http.FS(web.FS)))
+	mux.HandleFunc("GET /search", h.Search)
+	mux.HandleFunc("GET /{$}", h.Index)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
