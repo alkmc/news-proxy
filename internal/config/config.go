@@ -2,7 +2,6 @@ package config
 
 import (
 	"errors"
-	"flag"
 	"net"
 	"os"
 	"time"
@@ -15,7 +14,7 @@ const (
 	ShutdownTimeout = 10 * time.Second  // max time to complete tasks before shutdown
 	defaultPort     = "3000"
 	PageSize        = 10
-	BaseURL  = "https://newsapi.org"
+	BaseURL         = "https://newsapi.org"
 )
 
 func GetPort() string {
@@ -26,12 +25,11 @@ func GetPort() string {
 	return net.JoinHostPort("", port)
 }
 
-func ParseAPIKey() (string, error) {
-	apiKey := flag.String("apiKey", "", "newsapi.org access key")
-	flag.Parse()
+func GetAPIKey() (string, error) {
+	apiKey := os.Getenv("NEWS_API_KEY")
 
-	if *apiKey == "" {
-		return "", errors.New("apiKey must be set")
+	if apiKey == "" {
+		return "", errors.New("NEWS_API_KEY environment variable must be set")
 	}
-	return *apiKey, nil
+	return apiKey, nil
 }

@@ -26,7 +26,7 @@ func main() {
 }
 
 func run(logger *slog.Logger) error {
-	apiKey, err := config.ParseAPIKey()
+	apiKey, err := config.GetAPIKey()
 	if err != nil {
 		return err
 	}
