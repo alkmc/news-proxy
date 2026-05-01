@@ -3,7 +3,6 @@ package api
 import (
 	"errors"
 	"flag"
-	"html/template"
 	"net"
 	"os"
 	"time"
@@ -16,10 +15,6 @@ const (
 	ShutdownTimeout = 10 * time.Second  // max time to complete tasks before shutdown
 	defaultPort     = "3000"
 )
-
-func LoadTemplate(path string) *template.Template {
-	return template.Must(template.ParseFiles(path))
-}
 
 func GetPort() string {
 	port := os.Getenv("PORT")

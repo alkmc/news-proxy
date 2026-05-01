@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"html/template"
 	"log/slog"
 	"net/http"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"syscall"
 
 	"github.com/alkmc/firstGoApp/internal/api"
+	"github.com/alkmc/firstGoApp/web"
 )
 
 func main() {
@@ -26,7 +28,10 @@ func run(logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	tpl := api.LoadTemplate("index.html")
+	tpl, err := template.ParseFS(web.FS, "template/index.html")
+	if err != nil {
+		return fmt.Errorf("failed to parse template: %w", err)
+	}
 	h := api.NewNewsHandler(apiKey, tpl, logger)
 
 	port := api.GetPort()
@@ -39,8 +44,7 @@ func run(logger *slog.Logger) error {
 		IdleTimeout:  api.IdleTimeout,
 	}
 
-	fs := http.FileServer(http.Dir("assets"))
-	mux.Handle("/assets/", http.StripPrefix("/assets/", fs))
+	mux.Handle("/static/", http.FileServer(http.FS(web.FS)))
 
 	mux.HandleFunc("/search", h.Search)
 	mux.HandleFunc("/", h.Index)
