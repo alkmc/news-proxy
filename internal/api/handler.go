@@ -31,56 +31,56 @@ func NewNewsHandler(apiKey string, tpl *template.Template, logger *slog.Logger) 
 }
 
 func (h *NewsHandler) Index(w http.ResponseWriter, r *http.Request) {
-	var buf bytes.Buffer
-	if err := h.tpl.Execute(&buf, nil); err != nil {
-		h.logger.Error("template execution error", slog.Any("error", err))
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
-	if _, err := buf.WriteTo(w); err != nil {
-		h.logger.Error("error writing response", slog.Any("error", err))
-	}
+	h.render(w, nil)
 }
 
 func (h *NewsHandler) Search(w http.ResponseWriter, r *http.Request) {
-	u, err := url.Parse(r.URL.String())
-	if err != nil {
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	params := u.Query()
+	params := r.URL.Query()
 	searchKey := params.Get("q")
 	page := params.Get("page")
 	if page == "" {
 		page = "1"
 	}
 
-	s := &searchNews{}
-	s.SearchKey = searchKey
-
 	next, err := strconv.Atoi(page)
 	if err != nil {
 		http.Error(w, "unexpected server error", http.StatusInternalServerError)
 		return
 	}
-	s.CurrentPage = next
 
+	results, err := h.fetchNews(searchKey, next)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	s := &searchNews{
+		SearchKey:   searchKey,
+		CurrentPage: next,
+		Results:     *results,
+		TotalPages:  totalPages(results.TotalResults, 20),
+	}
+
+	h.render(w, s)
+}
+
+func (h *NewsHandler) fetchNews(searchKey string, page int) (*results, error) {
 	const (
 		URL      = "https://newsapi.org/v2/everything?q=%s&pageSize=%d&page=%d&apiKey=%s&sortBy=publishedAt&language=en"
 		pageSize = 20
 	)
 
-	endpoint := fmt.Sprintf(URL, url.QueryEscape(s.SearchKey), pageSize, s.CurrentPage, h.apiKey)
-	if err := h.fetch(endpoint, &s.Results); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	endpoint := fmt.Sprintf(URL, url.QueryEscape(searchKey), pageSize, page, h.apiKey)
+	var res results
+	if err := h.fetch(endpoint, &res); err != nil {
+		return nil, err
 	}
+	return &res, nil
+}
 
-	s.TotalPages = totalPages(s.Results.TotalResults, pageSize)
-
+func (h *NewsHandler) render(w http.ResponseWriter, data any) {
 	var buf bytes.Buffer
-	if err := h.tpl.Execute(&buf, s); err != nil {
+	if err := h.tpl.Execute(&buf, data); err != nil {
 		h.logger.Error("template execution error", slog.Any("error", err))
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
