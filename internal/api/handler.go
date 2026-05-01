@@ -7,7 +7,14 @@ import (
 	"math"
 	"net/http"
 	"strconv"
+	"sync"
 )
+
+var bufPool = sync.Pool{
+	New: func() any {
+		return new(bytes.Buffer)
+	},
+}
 
 type NewsHandler struct {
 	client *Client
@@ -38,13 +45,14 @@ func (h *NewsHandler) Search(w http.ResponseWriter, r *http.Request) {
 
 	next, err := strconv.Atoi(page)
 	if err != nil {
-		http.Error(w, "unexpected server error", http.StatusInternalServerError)
+		http.Error(w, "invalid page parameter", http.StatusBadRequest)
 		return
 	}
 
-	results, err := h.client.Fetch(searchKey, next)
+	results, err := h.client.Fetch(r.Context(), searchKey, next)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		h.logger.Error("failed to fetch news", slog.Any("error", err))
+		http.Error(w, "failed to fetch news", http.StatusInternalServerError)
 		return
 	}
 
@@ -58,9 +66,14 @@ func (h *NewsHandler) Search(w http.ResponseWriter, r *http.Request) {
 	h.render(w, s)
 }
 
-func (h *NewsHandler) render(w http.ResponseWriter, data any) {
-	var buf bytes.Buffer
-	if err := h.tpl.Execute(&buf, data); err != nil {
+func (h *NewsHandler) render(w http.ResponseWriter, data *searchNews) {
+	buf := bufPool.Get().(*bytes.Buffer)
+	defer func() {
+		buf.Reset()
+		bufPool.Put(buf)
+	}()
+
+	if err := h.tpl.Execute(buf, data); err != nil {
 		h.logger.Error("template execution error", slog.Any("error", err))
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
