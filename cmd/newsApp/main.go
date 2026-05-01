@@ -12,6 +12,7 @@ import (
 	"syscall"
 
 	"github.com/alkmc/firstGoApp/internal/api"
+	"github.com/alkmc/firstGoApp/internal/config"
 	"github.com/alkmc/firstGoApp/web"
 )
 
@@ -25,7 +26,7 @@ func main() {
 }
 
 func run(logger *slog.Logger) error {
-	apiKey, err := api.ParseAPIKey()
+	apiKey, err := config.ParseAPIKey()
 	if err != nil {
 		return err
 	}
@@ -33,22 +34,23 @@ func run(logger *slog.Logger) error {
 	if err != nil {
 		return fmt.Errorf("failed to parse template: %w", err)
 	}
-	h := api.NewNewsHandler(apiKey, tpl, logger)
 
-	port := api.GetPort()
+	client := api.NewClient(apiKey, config.PageSize, logger)
+	h := api.NewNewsHandler(client, tpl, logger)
+
+	port := config.GetPort()
 	mux := http.NewServeMux()
 	s := http.Server{
 		Addr:         port,
 		Handler:      mux,
-		ReadTimeout:  api.ReadTimeout,
-		WriteTimeout: api.WriteTimeout,
-		IdleTimeout:  api.IdleTimeout,
+		ReadTimeout:  config.ReadTimeout,
+		WriteTimeout: config.WriteTimeout,
+		IdleTimeout:  config.IdleTimeout,
 	}
 
-	mux.Handle("/static/", http.FileServer(http.FS(web.FS)))
-
-	mux.HandleFunc("/search", h.Search)
-	mux.HandleFunc("/", h.Index)
+	mux.Handle("GET /static/", http.FileServer(http.FS(web.FS)))
+	mux.HandleFunc("GET /search", h.Search)
+	mux.HandleFunc("GET /{$}", h.Index)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -66,7 +68,7 @@ func run(logger *slog.Logger) error {
 		}
 	case <-ctx.Done():
 		logger.Info("signal closing server received")
-		shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), api.ShutdownTimeout)
+		shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), config.ShutdownTimeout)
 		defer cancel()
 		if err := s.Shutdown(shutdownCtx); err != nil {
 			return fmt.Errorf("server shutdown failed: %w", err)

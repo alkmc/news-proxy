@@ -1,4 +1,4 @@
-package api
+package config
 
 import (
 	"errors"
@@ -14,6 +14,7 @@ const (
 	IdleTimeout     = 120 * time.Second // max time for connections using TCP Keep-Alive
 	ShutdownTimeout = 10 * time.Second  // max time to complete tasks before shutdown
 	defaultPort     = "3000"
+	PageSize        = 10
 )
 
 func GetPort() string {
