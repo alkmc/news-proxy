@@ -64,24 +64,20 @@ func (h *NewsHandler) Search(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unexpected server error", http.StatusInternalServerError)
 		return
 	}
-	s.NextPage = next
+	s.CurrentPage = next
 
 	const (
 		URL      = "https://newsapi.org/v2/everything?q=%s&pageSize=%d&page=%d&apiKey=%s&sortBy=publishedAt&language=en"
 		pageSize = 20
 	)
 
-	endpoint := fmt.Sprintf(URL, url.QueryEscape(s.SearchKey), pageSize, s.NextPage, h.apiKey)
+	endpoint := fmt.Sprintf(URL, url.QueryEscape(s.SearchKey), pageSize, s.CurrentPage, h.apiKey)
 	if err := h.fetch(endpoint, &s.Results); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	s.TotalPages = totalPages(s.Results.TotalResults, pageSize)
-
-	if ok := !s.IsLastPage(); ok {
-		s.NextPage++
-	}
 
 	var buf bytes.Buffer
 	if err := h.tpl.Execute(&buf, s); err != nil {

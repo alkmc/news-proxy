@@ -39,23 +39,20 @@ type newsAPIError struct {
 }
 
 type searchNews struct {
-	SearchKey  string
-	NextPage   int
-	TotalPages int
-	Results    results
+	SearchKey   string
+	CurrentPage int
+	TotalPages  int
+	Results     results
 }
 
 func (s *searchNews) IsLastPage() bool {
-	return s.NextPage >= s.TotalPages
+	return s.CurrentPage >= s.TotalPages
 }
 
-func (s *searchNews) CurrentPage() int {
-	if s.NextPage == 1 {
-		return s.NextPage
-	}
-	return s.NextPage - 1
+func (s *searchNews) NextPage() int {
+	return s.CurrentPage + 1
 }
 
 func (s *searchNews) PreviousPage() int {
-	return s.CurrentPage() - 1
+	return s.CurrentPage - 1
 }
