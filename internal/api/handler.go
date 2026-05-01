@@ -42,7 +42,7 @@ func (h *NewsHandler) Search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	results, err := h.client.Fetch(searchKey, next)
+	results, err := h.client.Fetch(r.Context(), searchKey, next)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

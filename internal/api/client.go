@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -30,19 +31,24 @@ func NewClient(apiKey string, pageSize int, logger *slog.Logger) *Client {
 	}
 }
 
-func (c *Client) Fetch(searchKey string, page int) (*results, error) {
+func (c *Client) Fetch(ctx context.Context, searchKey string, page int) (*results, error) {
 	endpoint := fmt.Sprintf(newsURL, url.QueryEscape(searchKey), c.PageSize, page, c.apiKey)
 
 	var res results
-	if err := c.fetch(endpoint, &res); err != nil {
+	if err := c.fetch(ctx, endpoint, &res); err != nil {
 		return nil, err
 	}
 
 	return &res, nil
 }
 
-func (c *Client) fetch(endpoint string, res *results) error {
-	resp, err := c.httpClient.Get(endpoint)
+func (c *Client) fetch(ctx context.Context, endpoint string, res *results) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return errors.New("could not create request")
+	}
+
+	resp, err := c.httpClient.Do(req)
 	if resp != nil {
 		defer resp.Body.Close()
 	}
