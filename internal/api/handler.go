@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"bytes"
@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
-	"log"
+	"log/slog"
 	"math"
 	"net/http"
 	"net/url"
@@ -14,33 +14,35 @@ import (
 	"time"
 )
 
-type newsHandler struct {
+type NewsHandler struct {
 	apiKey     string
 	tpl        *template.Template
 	httpClient *http.Client
+	logger     *slog.Logger
 }
 
-func newNewsHandler(apiKey string, tpl *template.Template) *newsHandler {
-	return &newsHandler{
+func NewNewsHandler(apiKey string, tpl *template.Template, logger *slog.Logger) *NewsHandler {
+	return &NewsHandler{
 		apiKey:     apiKey,
 		tpl:        tpl,
 		httpClient: &http.Client{Timeout: 10 * time.Second},
+		logger:     logger,
 	}
 }
 
-func (h *newsHandler) index(w http.ResponseWriter, r *http.Request) {
+func (h *NewsHandler) Index(w http.ResponseWriter, r *http.Request) {
 	var buf bytes.Buffer
 	if err := h.tpl.Execute(&buf, nil); err != nil {
-		log.Printf("template execution error: %v", err)
+		h.logger.Error("template execution error", slog.Any("error", err))
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	if _, err := buf.WriteTo(w); err != nil {
-		log.Printf("error writing response: %v", err)
+		h.logger.Error("error writing response", slog.Any("error", err))
 	}
 }
 
-func (h *newsHandler) search(w http.ResponseWriter, r *http.Request) {
+func (h *NewsHandler) Search(w http.ResponseWriter, r *http.Request) {
 	u, err := url.Parse(r.URL.String())
 	if err != nil {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -62,14 +64,14 @@ func (h *newsHandler) search(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unexpected server error", http.StatusInternalServerError)
 		return
 	}
-	s.NextPage = next
+	s.CurrentPage = next
 
 	const (
 		URL      = "https://newsapi.org/v2/everything?q=%s&pageSize=%d&page=%d&apiKey=%s&sortBy=publishedAt&language=en"
 		pageSize = 20
 	)
 
-	endpoint := fmt.Sprintf(URL, url.QueryEscape(s.SearchKey), pageSize, s.NextPage, h.apiKey)
+	endpoint := fmt.Sprintf(URL, url.QueryEscape(s.SearchKey), pageSize, s.CurrentPage, h.apiKey)
 	if err := h.fetch(endpoint, &s.Results); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -77,22 +79,18 @@ func (h *newsHandler) search(w http.ResponseWriter, r *http.Request) {
 
 	s.TotalPages = totalPages(s.Results.TotalResults, pageSize)
 
-	if ok := !s.IsLastPage(); ok {
-		s.NextPage++
-	}
-
 	var buf bytes.Buffer
 	if err := h.tpl.Execute(&buf, s); err != nil {
-		log.Printf("template execution error: %v", err)
+		h.logger.Error("template execution error", slog.Any("error", err))
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	if _, err := buf.WriteTo(w); err != nil {
-		log.Printf("error writing response: %v", err)
+		h.logger.Error("error writing response", slog.Any("error", err))
 	}
 }
 
-func (h *newsHandler) fetch(endpoint string, v any) error {
+func (h *NewsHandler) fetch(endpoint string, v any) error {
 	resp, err := h.httpClient.Get(endpoint)
 	if resp != nil {
 		defer resp.Body.Close()
@@ -106,14 +104,14 @@ func (h *newsHandler) fetch(endpoint string, v any) error {
 	if resp.StatusCode != http.StatusOK {
 		var newsErr newsAPIError
 		if err := dec.Decode(&newsErr); err != nil {
-			log.Println(err.Error())
+			h.logger.Error("json decode error", slog.Any("error", err))
 			return errors.New("json decoding error")
 		}
 		return errors.New(newsErr.Message)
 	}
 
 	if err := dec.Decode(v); err != nil {
-		log.Println(err.Error())
+		h.logger.Error("json decode error", slog.Any("error", err))
 		return errors.New("json decoding error")
 	}
 

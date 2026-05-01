@@ -1,8 +1,6 @@
 *.log
 idea/
-*.xml
-*.iml
-*.exe
 .vscode
 .DS_Store
 *.out
+.env

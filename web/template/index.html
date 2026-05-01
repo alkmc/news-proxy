@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="X-UA-Compatible" content="ie=edge" />
   <title>News App Demo</title>
-  <link rel="stylesheet" href="/assets/style.css" />
+  <link rel="stylesheet" href="/static/style.css" />
 </head>
 
 <body>
@@ -14,11 +14,12 @@
     <header>
       <a class="logo" href="/">News Demo</a>
       <form action="/search" method="GET">
-        <input autofocus class="search-input" value="{{ .SearchKey }}" placeholder="Enter a news topic" type="search"
-          name="q" />
+        <input autofocus class="search-input" value="{{ if . }}{{ .SearchKey }}{{ end }}"
+          placeholder="Enter a news topic" type="search" name="q" />
       </form>
       <a href="https://github.com/alkmc/firstGoApp" class="button github-button">View on Github</a>
     </header>
+    {{ if . }}
     <section class="container">
       <div class="result-count">
         {{ if (gt .Results.TotalResults 0)}}
@@ -51,13 +52,14 @@
         {{ end }}
       </ul>
       <div class="pagination">
-        {{ if (gt .NextPage 2) }}
+        {{ if (gt .CurrentPage 1) }}
         <a href="/search?q={{ .SearchKey }}&page={{ .PreviousPage }}" class="button previous-page">Previous</a>
         {{ end }} {{ if (ne .IsLastPage true) }}
         <a href="/search?q={{ .SearchKey }}&page={{ .NextPage }}" class="button next-page">Next</a>
         {{ end }}
       </div>
     </section>
+    {{ end }}
   </main>
 </body>
 
