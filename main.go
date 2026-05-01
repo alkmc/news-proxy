@@ -2,17 +2,26 @@ package main
 
 import (
 	"context"
-	"log"
+	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
-	"runtime"
 	"syscall"
 )
 
 func main() {
+	logger := setupLogger()
+	slog.SetDefault(logger)
+	if err := run(logger); err != nil {
+		logger.Error("proxy failed", slog.Any("error", err))
+		os.Exit(1)
+	}
+}
+
+func run(logger *slog.Logger) error {
 	apiKey := parseAPIKey()
-	h := newNewsHandler(apiKey, tpl)
+	h := newNewsHandler(apiKey, tpl, logger)
 
 	port := getPort()
 	mux := http.NewServeMux()
@@ -30,26 +39,37 @@ func main() {
 	mux.HandleFunc("/search", h.search)
 	mux.HandleFunc("/", h.index)
 
-	log.Printf("starting http server on port: %s", port)
-
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
 	go func() {
 		if err := s.ListenAndServe(); err != http.ErrServerClosed {
-			log.Fatalf("error starting server: %v", err)
+			logger.Error("error starting server", slog.Any("error", err))
+			os.Exit(1)
 		}
 	}()
-	log.Printf("server started with %s", runtime.Version())
+	logger.Info("server started", slog.String("port", port))
 
 	<-ctx.Done()
-	log.Print("signal closing server received")
+	logger.Info("signal closing server received")
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	if err := s.Shutdown(shutdownCtx); err != nil {
-		log.Printf("server shutdown failed: %v", err)
+		logger.Error("server shutdown failed", slog.Any("error", err))
 	}
-	log.Print("server shutdown gracefully")
+	logger.Info("server shutdown gracefully")
+	return nil
+}
+
+func setupLogger() *slog.Logger {
+	return slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		ReplaceAttr: func(_ []string, a slog.Attr) slog.Attr {
+			if a.Value.Kind() == slog.KindDuration {
+				return slog.String(a.Key, fmt.Sprintf("%dms", a.Value.Duration().Milliseconds()))
+			}
+			return a
+		},
+	}))
 }

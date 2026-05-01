@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
-	"log"
+	"log/slog"
 	"math"
 	"net/http"
 	"net/url"
@@ -18,25 +18,27 @@ type newsHandler struct {
 	apiKey     string
 	tpl        *template.Template
 	httpClient *http.Client
+	logger     *slog.Logger
 }
 
-func newNewsHandler(apiKey string, tpl *template.Template) *newsHandler {
+func newNewsHandler(apiKey string, tpl *template.Template, logger *slog.Logger) *newsHandler {
 	return &newsHandler{
 		apiKey:     apiKey,
 		tpl:        tpl,
 		httpClient: &http.Client{Timeout: 10 * time.Second},
+		logger:     logger,
 	}
 }
 
 func (h *newsHandler) index(w http.ResponseWriter, r *http.Request) {
 	var buf bytes.Buffer
 	if err := h.tpl.Execute(&buf, nil); err != nil {
-		log.Printf("template execution error: %v", err)
+		h.logger.Error("template execution error", slog.Any("error", err))
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	if _, err := buf.WriteTo(w); err != nil {
-		log.Printf("error writing response: %v", err)
+		h.logger.Error("error writing response", slog.Any("error", err))
 	}
 }
 
@@ -83,12 +85,12 @@ func (h *newsHandler) search(w http.ResponseWriter, r *http.Request) {
 
 	var buf bytes.Buffer
 	if err := h.tpl.Execute(&buf, s); err != nil {
-		log.Printf("template execution error: %v", err)
+		h.logger.Error("template execution error", slog.Any("error", err))
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	if _, err := buf.WriteTo(w); err != nil {
-		log.Printf("error writing response: %v", err)
+		h.logger.Error("error writing response", slog.Any("error", err))
 	}
 }
 
@@ -106,14 +108,14 @@ func (h *newsHandler) fetch(endpoint string, v any) error {
 	if resp.StatusCode != http.StatusOK {
 		var newsErr newsAPIError
 		if err := dec.Decode(&newsErr); err != nil {
-			log.Println(err.Error())
+			h.logger.Error("json decode error", slog.Any("error", err))
 			return errors.New("json decoding error")
 		}
 		return errors.New(newsErr.Message)
 	}
 
 	if err := dec.Decode(v); err != nil {
-		log.Println(err.Error())
+		h.logger.Error("json decode error", slog.Any("error", err))
 		return errors.New("json decoding error")
 	}
 
