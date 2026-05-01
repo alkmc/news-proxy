@@ -41,11 +41,12 @@ func run(logger *slog.Logger) error {
 	port := config.GetPort()
 	mux := http.NewServeMux()
 	s := http.Server{
-		Addr:         port,
-		Handler:      mux,
-		ReadTimeout:  config.ReadTimeout,
-		WriteTimeout: config.WriteTimeout,
-		IdleTimeout:  config.IdleTimeout,
+		Addr:              port,
+		Handler:           mux,
+		ReadTimeout:       config.ReadTimeout,
+		ReadHeaderTimeout: config.ReadHeaderTimeout,
+		WriteTimeout:      config.WriteTimeout,
+		IdleTimeout:       config.IdleTimeout,
 	}
 
 	mux.Handle("GET /static/", http.FileServer(http.FS(web.FS)))
