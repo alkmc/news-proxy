@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"html/template"
 	"log/slog"
@@ -52,23 +53,26 @@ func run(logger *slog.Logger) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
+	serverErr := make(chan error, 1)
 	go func() {
-		if err := s.ListenAndServe(); err != http.ErrServerClosed {
-			logger.Error("error starting server", slog.Any("error", err))
-			os.Exit(1)
-		}
+		serverErr <- s.ListenAndServe()
 	}()
 	logger.Info("server started", slog.String("port", port))
 
-	<-ctx.Done()
-	logger.Info("signal closing server received")
-
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), api.ShutdownTimeout)
-	defer cancel()
-
-	if err := s.Shutdown(shutdownCtx); err != nil {
-		return fmt.Errorf("server shutdown failed: %w", err)
+	select {
+	case err := <-serverErr:
+		if !errors.Is(err, http.ErrServerClosed) {
+			return fmt.Errorf("server listen failed: %w", err)
+		}
+	case <-ctx.Done():
+		logger.Info("signal closing server received")
+		shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), api.ShutdownTimeout)
+		defer cancel()
+		if err := s.Shutdown(shutdownCtx); err != nil {
+			return fmt.Errorf("server shutdown failed: %w", err)
+		}
 	}
+
 	logger.Info("server shutdown gracefully")
 	return nil
 }
