@@ -15,20 +15,38 @@ type Client struct {
 	baseParsedURL *url.URL
 	apiKey        string
 	PageSize      int
+	MaxResults    int
 	httpClient    *http.Client
 	logger        *slog.Logger
 }
 
-func NewClient(baseURL, apiKey string, pageSize int, logger *slog.Logger) (*Client, error) {
-	base, err := url.Parse(baseURL)
+// Config defines the configuration for the API Client.
+type Config struct {
+	BaseURL    string
+	APIKey     string
+	PageSize   int
+	MaxResults int
+	Timeout    time.Duration
+	Logger     *slog.Logger
+}
+
+func NewClient(cfg Config) (*Client, error) {
+	base, err := url.Parse(cfg.BaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse base URL: %w", err)
 	}
+
+	logger := cfg.Logger
+	if logger == nil {
+		logger = slog.Default()
+	}
+
 	return &Client{
 		baseParsedURL: base,
-		apiKey:        apiKey,
-		PageSize:      pageSize,
-		httpClient:    &http.Client{Timeout: 10 * time.Second},
+		apiKey:        cfg.APIKey,
+		PageSize:      cfg.PageSize,
+		MaxResults:    cfg.MaxResults,
+		httpClient:    &http.Client{Timeout: cfg.Timeout},
 		logger:        logger,
 	}, nil
 }

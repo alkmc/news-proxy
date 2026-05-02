@@ -13,8 +13,10 @@ const (
 	WriteTimeout      = 10 * time.Second  // max time to write response to the client
 	IdleTimeout       = 120 * time.Second // max time for connections using TCP Keep-Alive
 	ShutdownTimeout   = 10 * time.Second  // max time to complete tasks before shutdown
+	FetchTimeout      = 10 * time.Second  // max time to fetch data from NewsAPI
 	defaultPort       = "3000"
 	PageSize          = 10
+	MaxResults        = 100 // NewsAPI free tier limit
 	BaseURL           = "https://newsapi.org"
 )
 

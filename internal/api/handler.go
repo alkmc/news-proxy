@@ -48,6 +48,12 @@ func (h *NewsHandler) Search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	maxPages := totalPages(h.client.MaxResults, h.client.PageSize)
+	if next > maxPages {
+		http.Error(w, "page limit exceeded", http.StatusBadRequest)
+		return
+	}
+
 	results, err := h.client.Fetch(r.Context(), searchKey, next)
 	if err != nil {
 		h.logger.Error("failed to fetch news", slog.Any("error", err))
@@ -60,6 +66,11 @@ func (h *NewsHandler) Search(w http.ResponseWriter, r *http.Request) {
 		CurrentPage: next,
 		Results:     *results,
 		TotalPages:  totalPages(results.TotalResults, h.client.PageSize),
+	}
+
+	// Ensure TotalPages does not exceed the allowed API limit for the UI
+	if s.TotalPages > maxPages {
+		s.TotalPages = maxPages
 	}
 
 	h.render(w, s)
@@ -86,5 +97,5 @@ func totalPages(total, pageSize int) int {
 	if total <= 0 || pageSize <= 0 {
 		return 0
 	}
-	return 1 + (total-1)/pageSize
+	return (total + pageSize - 1) / pageSize
 }

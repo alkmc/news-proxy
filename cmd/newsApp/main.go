@@ -35,7 +35,14 @@ func run(logger *slog.Logger) error {
 		return fmt.Errorf("failed to parse template: %w", err)
 	}
 
-	client, err := api.NewClient(config.BaseURL, apiKey, config.PageSize, logger)
+	client, err := api.NewClient(api.Config{
+		BaseURL:    config.BaseURL,
+		APIKey:     apiKey,
+		PageSize:   config.PageSize,
+		MaxResults: config.MaxResults,
+		Timeout:    config.FetchTimeout,
+		Logger:     logger,
+	})
 	if err != nil {
 		return fmt.Errorf("failed to create news client: %w", err)
 	}
