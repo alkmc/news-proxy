@@ -14,18 +14,19 @@ const (
 	staticCachePolicy = "public, max-age=86400"
 
 	// contentSecurityPolicy allows arbitrary HTTPS images for NewsAPI publishers.
-	contentSecurityPolicy = "default-src 'self'; script-src 'none'; style-src 'self'; " +
-		"img-src 'self' https:; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
+	contentSecurityPolicy = `default-src 'self'; script-src 'none'; img-src 'self' https:; form-action 'self'; frame-ancestors 'none'; base-uri 'none'`
 )
 
-func cspMiddleware(next http.Handler) http.Handler {
+func securityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Security-Policy", contentSecurityPolicy)
+		h := w.Header()
+		h.Set("Content-Security-Policy", contentSecurityPolicy)
+		h.Set("X-Content-Type-Options", "nosniff")
 		next.ServeHTTP(w, r)
 	})
 }
 
-func cacheMiddleware(next http.Handler) http.Handler {
+func staticCache(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", staticCachePolicy)
 		next.ServeHTTP(w, r)

@@ -7,10 +7,10 @@ import (
 	"testing"
 )
 
-func TestCSPMiddleware(t *testing.T) {
+func TestSecurityHeaders(t *testing.T) {
 	t.Parallel()
 
-	handler := cspMiddleware(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	handler := securityHeaders(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -18,20 +18,32 @@ func TestCSPMiddleware(t *testing.T) {
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
 
-	got := rr.Header().Get("Content-Security-Policy")
-	if got == "" {
-		t.Fatal("expected Content-Security-Policy header to be set")
-	}
+	t.Run("CSP", func(t *testing.T) {
+		t.Parallel()
 
-	wantDirectives := []string{
-		"default-src 'self'",
-		"script-src 'none'",
-		"frame-ancestors 'none'",
-		"base-uri 'none'",
-	}
-	for _, want := range wantDirectives {
-		if !strings.Contains(got, want) {
-			t.Errorf("CSP missing directive %q, got %q", want, got)
+		csp := rr.Header().Get("Content-Security-Policy")
+		if csp == "" {
+			t.Fatal("expected Content-Security-Policy header to be set")
 		}
-	}
+
+		wantDirectives := []string{
+			"default-src 'self'",
+			"script-src 'none'",
+			"frame-ancestors 'none'",
+			"base-uri 'none'",
+		}
+		for _, want := range wantDirectives {
+			if !strings.Contains(csp, want) {
+				t.Errorf("CSP missing directive %q, got %q", want, csp)
+			}
+		}
+	})
+
+	t.Run("nosniff", func(t *testing.T) {
+		t.Parallel()
+
+		if got := rr.Header().Get("X-Content-Type-Options"); got != "nosniff" {
+			t.Errorf("expected X-Content-Type-Options 'nosniff', got %q", got)
+		}
+	})
 }
