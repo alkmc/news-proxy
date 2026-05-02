@@ -82,7 +82,7 @@ func (h *NewsHandler) Search(w http.ResponseWriter, r *http.Request) {
 		SearchKey:   searchKey,
 		CurrentPage: page,
 		Results:     *results,
-		TotalPages:  countPagesWithLimit(results.TotalResults, pageSize, maxResults),
+		TotalPages:  countPages(min(results.TotalResults, maxResults), pageSize),
 	}
 
 	h.render(w, s)
@@ -155,9 +155,4 @@ func countPages(total, pageSize int) int {
 		return 0
 	}
 	return (total + pageSize - 1) / pageSize
-}
-
-// countPagesWithLimit caps total at limit, then counts pages.
-func countPagesWithLimit(total, pageSize, limit int) int {
-	return countPages(min(total, limit), pageSize)
 }
