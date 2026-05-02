@@ -2,18 +2,24 @@ package api
 
 import (
 	"net/http"
-
-	"github.com/alkmc/firstGoApp/internal/config"
+	"time"
 )
 
-// NewServer creates a configured http.Server instance with timeouts from global config.
+const (
+	ReadTimeout       = 7 * time.Second   // max time to read request from the client
+	ReadHeaderTimeout = 5 * time.Second   // max time to read request headers
+	WriteTimeout      = 10 * time.Second  // max time to write response to the client
+	IdleTimeout       = 120 * time.Second // max time for connections using TCP Keep-Alive
+)
+
+// NewServer creates a configured http.Server instance with predefined timeouts.
 func NewServer(addr string, handler http.Handler) *http.Server {
 	return &http.Server{
 		Addr:              addr,
 		Handler:           handler,
-		ReadTimeout:       config.ReadTimeout,
-		ReadHeaderTimeout: config.ReadHeaderTimeout,
-		WriteTimeout:      config.WriteTimeout,
-		IdleTimeout:       config.IdleTimeout,
+		ReadTimeout:       ReadTimeout,
+		ReadHeaderTimeout: ReadHeaderTimeout,
+		WriteTimeout:      WriteTimeout,
+		IdleTimeout:       IdleTimeout,
 	}
 }
