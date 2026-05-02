@@ -49,37 +49,24 @@ func (h *NewsHandler) Index(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *NewsHandler) Search(w http.ResponseWriter, r *http.Request) {
-	params := r.URL.Query()
-
-	searchKey, err := validateQuery(params.Get("q"))
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	page, err := validatePage(params.Get("page"))
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
 	pageSize := h.client.GetPageSize()
 	maxResults := h.client.GetMaxResults()
 	maxAllowedPages := countPages(maxResults, pageSize)
 
-	if page > maxAllowedPages {
-		http.Error(w, "page limit exceeded", http.StatusBadRequest)
+	query, page, err := parseSearchParams(r, maxAllowedPages)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	results, err := h.client.Fetch(r.Context(), searchKey, page)
+	results, err := h.client.Fetch(r.Context(), query, page)
 	if err != nil {
 		h.handleFetchError(w, err)
 		return
 	}
 
 	s := &searchNews{
-		SearchKey:   searchKey,
+		SearchKey:   query,
 		CurrentPage: page,
 		Results:     *results,
 		TotalPages:  countPages(min(results.TotalResults, maxResults), pageSize),
@@ -125,6 +112,23 @@ func (h *NewsHandler) handleFetchError(w http.ResponseWriter, err error) {
 	default:
 		http.Error(w, "failed to fetch news", http.StatusInternalServerError)
 	}
+}
+
+func parseSearchParams(r *http.Request, maxAllowedPages int) (query string, page int, err error) {
+	q := r.URL.Query()
+
+	query, err = validateQuery(q.Get("q"))
+	if err != nil {
+		return "", 0, err
+	}
+	page, err = validatePage(q.Get("page"))
+	if err != nil {
+		return "", 0, err
+	}
+	if page > maxAllowedPages {
+		return "", 0, errors.New("page limit exceeded")
+	}
+	return query, page, nil
 }
 
 func validateQuery(q string) (string, error) {
