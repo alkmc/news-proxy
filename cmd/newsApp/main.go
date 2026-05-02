@@ -49,7 +49,7 @@ func run(logger *slog.Logger) error {
 		IdleTimeout:       config.IdleTimeout,
 	}
 
-	mux.Handle("GET /static/", http.FileServer(http.FS(web.FS)))
+	mux.Handle("GET /static/", api.CacheMiddleware(http.FileServer(http.FS(web.FS))))
 	mux.HandleFunc("GET /search", h.Search)
 	mux.HandleFunc("GET /{$}", h.Index)
 
