@@ -85,11 +85,13 @@ func run(logger *slog.Logger) error {
 
 func setupLogger() *slog.Logger {
 	return slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		ReplaceAttr: func(_ []string, a slog.Attr) slog.Attr {
-			if a.Value.Kind() == slog.KindDuration {
-				return slog.String(a.Key, fmt.Sprintf("%dms", a.Value.Duration().Milliseconds()))
-			}
-			return a
-		},
+		ReplaceAttr: loggerReplaceAttrs,
 	}))
+}
+
+func loggerReplaceAttrs(_ []string, a slog.Attr) slog.Attr {
+	if a.Value.Kind() == slog.KindDuration {
+		return slog.String(a.Key, fmt.Sprintf("%dms", a.Value.Duration().Milliseconds()))
+	}
+	return a
 }
