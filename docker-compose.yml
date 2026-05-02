@@ -1,0 +1,10 @@
+services:
+  news-proxy:
+    container_name: news-proxy
+    build: .
+    ports:
+      - "${PORT:-3000}:${PORT:-3000}"
+    environment:
+      - NEWS_API_KEY=${NEWS_API_KEY}
+      - PORT=${PORT:-3000}
+    restart: unless-stopped
