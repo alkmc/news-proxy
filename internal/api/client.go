@@ -4,33 +4,33 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 )
 
-const (
-	endpointTpl = "%s/v2/everything?q=%s&pageSize=%d&page=%d&apiKey=%s&sortBy=publishedAt&language=en"
-)
-
 type Client struct {
-	baseURL    string
-	apiKey     string
-	PageSize   int
-	httpClient *http.Client
-	logger     *slog.Logger
+	baseParsedURL *url.URL
+	apiKey        string
+	PageSize      int
+	httpClient    *http.Client
+	logger        *slog.Logger
 }
 
-func NewClient(baseURL, apiKey string, pageSize int, logger *slog.Logger) *Client {
-	return &Client{
-		baseURL:    baseURL,
-		apiKey:     apiKey,
-		PageSize:   pageSize,
-		httpClient: &http.Client{Timeout: 10 * time.Second},
-		logger:     logger,
+func NewClient(baseURL, apiKey string, pageSize int, logger *slog.Logger) (*Client, error) {
+	base, err := url.Parse(baseURL)
+	if err != nil {
+		return nil, err
 	}
+	return &Client{
+		baseParsedURL: base,
+		apiKey:        apiKey,
+		PageSize:      pageSize,
+		httpClient:    &http.Client{Timeout: 10 * time.Second},
+		logger:        logger,
+	}, nil
 }
 
 func (c *Client) Fetch(ctx context.Context, searchKey string, page int) (*results, error) {
@@ -45,7 +45,19 @@ func (c *Client) Fetch(ctx context.Context, searchKey string, page int) (*result
 }
 
 func (c *Client) endpoint(searchKey string, page int) string {
-	return fmt.Sprintf(endpointTpl, c.baseURL, url.QueryEscape(searchKey), c.PageSize, page, c.apiKey)
+	u := c.baseParsedURL.JoinPath("/v2/everything")
+
+	q := url.Values{
+		"q":        {searchKey},
+		"pageSize": {strconv.Itoa(c.PageSize)},
+		"page":     {strconv.Itoa(page)},
+		"apiKey":   {c.apiKey},
+		"sortBy":   {"publishedAt"},
+		"language": {"en"},
+	}
+
+	u.RawQuery = q.Encode()
+	return u.String()
 }
 
 func (c *Client) fetch(ctx context.Context, endpoint string, res *results) error {
