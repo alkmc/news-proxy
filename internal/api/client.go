@@ -46,7 +46,7 @@ func NewClient(cfg Config) (*Client, error) {
 		apiKey:        cfg.APIKey,
 		pageSize:      cfg.PageSize,
 		maxResults:    cfg.MaxResults,
-		httpClient:    &http.Client{Timeout: cfg.Timeout},
+		httpClient:    &http.Client{Timeout: cfg.Timeout, Transport: customTransport()},
 		logger:        logger,
 	}, nil
 }
@@ -120,4 +120,13 @@ func (c *Client) newRequest(ctx context.Context, endpoint string) (*http.Request
 
 	req.Header.Set("Authorization", c.apiKey)
 	return req, nil
+}
+
+func customTransport() *http.Transport {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.MaxIdleConns = 100
+	transport.MaxIdleConnsPerHost = 10
+	transport.MaxConnsPerHost = 10
+	transport.IdleConnTimeout = 30 * time.Second
+	return transport
 }

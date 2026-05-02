@@ -6,8 +6,8 @@ import (
 )
 
 type source struct {
-	ID   any    `json:"id"`
-	Name string `json:"name"`
+	ID   *string `json:"id"`
+	Name string  `json:"name"`
 }
 
 type article struct {
