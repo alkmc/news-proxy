@@ -110,6 +110,7 @@ header {
 
   .title {
     margin-bottom: 15px;
+    text-wrap: balance;
   }
 
   .description {
