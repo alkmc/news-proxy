@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"html/template"
 	"log/slog"
@@ -63,8 +64,7 @@ func (h *NewsHandler) Search(w http.ResponseWriter, r *http.Request) {
 
 	results, err := h.client.Fetch(r.Context(), searchKey, page)
 	if err != nil {
-		h.logger.Error("failed to fetch news", slog.Any("error", err))
-		http.Error(w, "failed to fetch news", http.StatusInternalServerError)
+		h.handleFetchError(w, err)
 		return
 	}
 
@@ -76,6 +76,28 @@ func (h *NewsHandler) Search(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.render(w, s)
+}
+
+func (h *NewsHandler) handleFetchError(w http.ResponseWriter, err error) {
+	h.logger.Error("failed to fetch news", slog.Any("error", err))
+
+	switch {
+	case errors.Is(err, ErrUpstreamTimeout):
+		http.Error(w, "upstream timeout", http.StatusGatewayTimeout)
+	case errors.Is(err, ErrUpstreamRateLimit):
+		w.Header().Set("Retry-After", "60")
+		http.Error(w, "rate limit exceeded, try later", http.StatusServiceUnavailable)
+	case errors.Is(err, ErrUpstreamUnauthorized):
+		http.Error(w, "service misconfigured", http.StatusBadGateway)
+	case errors.Is(err, ErrUpstreamBadRequest):
+		http.Error(w, "invalid search query", http.StatusBadRequest)
+	case errors.Is(err, ErrUpstreamServer),
+		errors.Is(err, ErrUpstreamUnavailable),
+		errors.Is(err, ErrInvalidResponse):
+		http.Error(w, "upstream unavailable", http.StatusBadGateway)
+	default:
+		http.Error(w, "failed to fetch news", http.StatusInternalServerError)
+	}
 }
 
 func (h *NewsHandler) validatePage(pageStr string) (int, error) {
