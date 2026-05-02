@@ -11,12 +11,6 @@ import (
 	"time"
 )
 
-type NewsClient interface {
-	Fetch(ctx context.Context, searchKey string, page int) (*results, error)
-	GetPageSize() int
-	GetMaxResults() int
-}
-
 type Client struct {
 	baseParsedURL *url.URL
 	apiKey        string

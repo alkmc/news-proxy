@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"html/template"
 	"log/slog"
@@ -16,13 +17,19 @@ var bufPool = sync.Pool{
 	},
 }
 
+type newsClient interface {
+	Fetch(ctx context.Context, searchKey string, page int) (*results, error)
+	GetPageSize() int
+	GetMaxResults() int
+}
+
 type NewsHandler struct {
-	client NewsClient
+	client newsClient
 	tpl    *template.Template
 	logger *slog.Logger
 }
 
-func NewNewsHandler(client NewsClient, tpl *template.Template, logger *slog.Logger,
+func NewNewsHandler(client newsClient, tpl *template.Template, logger *slog.Logger,
 ) *NewsHandler {
 	return &NewsHandler{
 		client: client,
