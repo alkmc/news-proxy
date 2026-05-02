@@ -2,9 +2,9 @@ package api
 
 import (
 	"bytes"
+	"fmt"
 	"html/template"
 	"log/slog"
-	"math"
 	"net/http"
 	"strconv"
 	"sync"
@@ -38,18 +38,19 @@ func (h *NewsHandler) Index(w http.ResponseWriter, r *http.Request) {
 func (h *NewsHandler) Search(w http.ResponseWriter, r *http.Request) {
 	params := r.URL.Query()
 	searchKey := params.Get("q")
-	page := params.Get("page")
-	if page == "" {
-		page = "1"
-	}
 
-	next, err := strconv.Atoi(page)
-	if err != nil || next < 1 {
-		http.Error(w, "invalid page parameter", http.StatusBadRequest)
+	page, err := h.validatePage(params.Get("page"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	results, err := h.client.Fetch(r.Context(), searchKey, next)
+	if page > h.calculateTotalPages(h.client.MaxResults) {
+		http.Error(w, "page limit exceeded", http.StatusBadRequest)
+		return
+	}
+
+	results, err := h.client.Fetch(r.Context(), searchKey, page)
 	if err != nil {
 		h.logger.Error("failed to fetch news", slog.Any("error", err))
 		http.Error(w, "failed to fetch news", http.StatusInternalServerError)
@@ -58,12 +59,32 @@ func (h *NewsHandler) Search(w http.ResponseWriter, r *http.Request) {
 
 	s := &searchNews{
 		SearchKey:   searchKey,
-		CurrentPage: next,
+		CurrentPage: page,
 		Results:     *results,
-		TotalPages:  totalPages(results.TotalResults, h.client.PageSize),
+		TotalPages:  h.calculateTotalPages(results.TotalResults),
 	}
 
 	h.render(w, s)
+}
+
+func (h *NewsHandler) validatePage(pageStr string) (int, error) {
+	if pageStr == "" {
+		return 1, nil
+	}
+	page, err := strconv.Atoi(pageStr)
+	if err != nil || page < 1 {
+		return 0, fmt.Errorf("invalid page parameter")
+	}
+	return page, nil
+}
+
+func (h *NewsHandler) calculateTotalPages(totalResults int) int {
+	pages := totalPages(totalResults, h.client.PageSize)
+	maxAllowed := totalPages(h.client.MaxResults, h.client.PageSize)
+	if pages > maxAllowed {
+		return maxAllowed
+	}
+	return pages
 }
 
 func (h *NewsHandler) render(w http.ResponseWriter, data *searchNews) {
@@ -84,5 +105,8 @@ func (h *NewsHandler) render(w http.ResponseWriter, data *searchNews) {
 }
 
 func totalPages(total, pageSize int) int {
-	return int(math.Ceil(float64(total) / float64(pageSize)))
+	if total <= 0 || pageSize <= 0 {
+		return 0
+	}
+	return (total + pageSize - 1) / pageSize
 }
