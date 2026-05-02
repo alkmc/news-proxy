@@ -53,7 +53,12 @@ func run(logger *slog.Logger) error {
 	port := config.GetPort()
 	srv := api.NewServer(port, mux)
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+	ctx, stop := signal.NotifyContext(
+		context.Background(),
+		os.Interrupt,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+	)
 	defer stop()
 
 	serverErr := make(chan error, 1)
@@ -69,7 +74,10 @@ func run(logger *slog.Logger) error {
 		}
 	case <-ctx.Done():
 		logger.Info("signal closing server received")
-		shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), config.ShutdownTimeout)
+		shutdownCtx, cancel := context.WithTimeout(
+			context.WithoutCancel(ctx),
+			config.ShutdownTimeout,
+		)
 		defer cancel()
 		if err := srv.Shutdown(shutdownCtx); err != nil {
 			return fmt.Errorf("server shutdown failed: %w", err)
