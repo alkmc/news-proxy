@@ -15,7 +15,7 @@ const (
 	staticCachePolicy = "public, max-age=86400"
 
 	// contentSecurityPolicy allows arbitrary HTTPS images for NewsAPI publishers.
-	contentSecurityPolicy = "default-src 'self'; script-src 'none'; img-src 'self' https:; " +
+	contentSecurityPolicy = "default-src 'self'; script-src 'self'; img-src 'self' https:; " +
 		"form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
 )
 

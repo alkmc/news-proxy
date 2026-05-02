@@ -84,7 +84,7 @@ func run(logger *slog.Logger) error {
 		}
 	}
 
-	logger.Info("server shutdown gracefully")
+	logger.Info("server shut down gracefully")
 	return nil
 }
 
