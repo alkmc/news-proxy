@@ -3,10 +3,12 @@ package api
 import (
 	"context"
 	"errors"
+	"fmt"
 	"html/template"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 )
@@ -82,6 +84,56 @@ func TestNewsHandler_Search(t *testing.T) {
 			mockClient:     &mockNewsClient{},
 			expectedStatus: http.StatusBadRequest,
 			bodyContains:   "invalid page parameter",
+		},
+		{
+			name:           "query too long",
+			targetURL:      "/search?q=" + url.QueryEscape(strings.Repeat("a", maxQueryLength+1)),
+			mockClient:     &mockNewsClient{},
+			expectedStatus: http.StatusBadRequest,
+			bodyContains:   "query too long",
+		},
+		{
+			name:           "empty query",
+			targetURL:      "/search?q=",
+			mockClient:     &mockNewsClient{},
+			expectedStatus: http.StatusBadRequest,
+			bodyContains:   "query is required",
+		},
+		{
+			name:           "missing q parameter",
+			targetURL:      "/search",
+			mockClient:     &mockNewsClient{},
+			expectedStatus: http.StatusBadRequest,
+			bodyContains:   "query is required",
+		},
+		{
+			name:           "whitespace-only query",
+			targetURL:      "/search?q=" + url.QueryEscape("   "),
+			mockClient:     &mockNewsClient{},
+			expectedStatus: http.StatusBadRequest,
+			bodyContains:   "query is required",
+		},
+		{
+			name:      "query is trimmed before fetch",
+			targetURL: "/search?q=" + url.QueryEscape("  golang  "),
+			mockClient: &mockNewsClient{
+				mockFetchFn: func(ctx context.Context, searchKey string, page int) (*results, error) {
+					if searchKey != "golang" {
+						return nil, fmt.Errorf("expected trimmed query 'golang', got %q", searchKey)
+					}
+					return &results{Status: "ok", TotalResults: 0}, nil
+				},
+				pageSize:   10,
+				maxResults: 100,
+			},
+			expectedStatus: http.StatusOK,
+			bodyContains:   "Query: golang",
+		},
+		{
+			name:           "query at max length passes validation",
+			targetURL:      "/search?q=" + url.QueryEscape(strings.Repeat("a", maxQueryLength)),
+			mockClient:     &mockNewsClient{mockFetchFn: mockFetchResponse(0), pageSize: 10, maxResults: 100},
+			expectedStatus: http.StatusOK,
 		},
 		{
 			name:      "page exceeds limit",

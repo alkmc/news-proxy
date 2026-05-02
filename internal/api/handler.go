@@ -9,8 +9,13 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
+	"unicode/utf8"
 )
+
+// maxQueryLength caps queries in runes, not bytes.
+const maxQueryLength = 200
 
 var bufPool = sync.Pool{
 	New: func() any {
@@ -45,9 +50,14 @@ func (h *NewsHandler) Index(w http.ResponseWriter, r *http.Request) {
 
 func (h *NewsHandler) Search(w http.ResponseWriter, r *http.Request) {
 	params := r.URL.Query()
-	searchKey := params.Get("q")
 
-	page, err := h.validatePage(params.Get("page"))
+	searchKey, err := validateQuery(params.Get("q"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	page, err := validatePage(params.Get("page"))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -78,6 +88,23 @@ func (h *NewsHandler) Search(w http.ResponseWriter, r *http.Request) {
 	h.render(w, s)
 }
 
+func (h *NewsHandler) render(w http.ResponseWriter, data *searchNews) {
+	buf := bufPool.Get().(*bytes.Buffer)
+	defer func() {
+		buf.Reset()
+		bufPool.Put(buf)
+	}()
+
+	if err := h.tpl.Execute(buf, data); err != nil {
+		h.logger.Error("template execution error", slog.Any("error", err))
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	if _, err := buf.WriteTo(w); err != nil {
+		h.logger.Error("error writing response", slog.Any("error", err))
+	}
+}
+
 func (h *NewsHandler) handleFetchError(w http.ResponseWriter, err error) {
 	h.logger.Error("failed to fetch news", slog.Any("error", err))
 
@@ -100,7 +127,18 @@ func (h *NewsHandler) handleFetchError(w http.ResponseWriter, err error) {
 	}
 }
 
-func (h *NewsHandler) validatePage(pageStr string) (int, error) {
+func validateQuery(q string) (string, error) {
+	q = strings.TrimSpace(q)
+	if q == "" {
+		return "", fmt.Errorf("query is required")
+	}
+	if utf8.RuneCountInString(q) > maxQueryLength {
+		return "", fmt.Errorf("query too long (max %d characters)", maxQueryLength)
+	}
+	return q, nil
+}
+
+func validatePage(pageStr string) (int, error) {
 	if pageStr == "" {
 		return 1, nil
 	}
@@ -111,24 +149,7 @@ func (h *NewsHandler) validatePage(pageStr string) (int, error) {
 	return page, nil
 }
 
-func (h *NewsHandler) render(w http.ResponseWriter, data *searchNews) {
-	buf := bufPool.Get().(*bytes.Buffer)
-	defer func() {
-		buf.Reset()
-		bufPool.Put(buf)
-	}()
-
-	if err := h.tpl.Execute(buf, data); err != nil {
-		h.logger.Error("template execution error", slog.Any("error", err))
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
-	if _, err := buf.WriteTo(w); err != nil {
-		h.logger.Error("error writing response", slog.Any("error", err))
-	}
-}
-
-// countPages calculates the total number of pages based on the total number of items and page size.
+// countPages returns the number of pages, rounding up; 0 if total or pageSize is non-positive.
 func countPages(total, pageSize int) int {
 	if total <= 0 || pageSize <= 0 {
 		return 0
@@ -136,7 +157,7 @@ func countPages(total, pageSize int) int {
 	return (total + pageSize - 1) / pageSize
 }
 
-// countPagesWithLimit calculates the total number of pages, capping the total items at the specified limit.
+// countPagesWithLimit caps total at limit, then counts pages.
 func countPagesWithLimit(total, pageSize, limit int) int {
 	return countPages(min(total, limit), pageSize)
 }

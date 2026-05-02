@@ -12,7 +12,7 @@ const (
 	IdleTimeout       = 120 * time.Second // max time for connections using TCP Keep-Alive
 )
 
-// NewServer creates a configured http.Server instance with predefined timeouts.
+// NewServer returns an http.Server with predefined timeouts.
 func NewServer(addr string, handler http.Handler) *http.Server {
 	return &http.Server{
 		Addr:              addr,

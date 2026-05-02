@@ -21,7 +21,7 @@ type Client struct {
 	logger        *slog.Logger
 }
 
-// Config defines the configuration for the API Client.
+// Config configures the API Client.
 type Config struct {
 	BaseURL    string
 	APIKey     string
@@ -109,7 +109,7 @@ func (c *Client) fetch(ctx context.Context, endpoint string, res *results) error
 	return nil
 }
 
-// classifyTransportError maps transport-level failures (timeouts, network errors) to sentinel errors.
+// classifyTransportError maps timeouts and network errors to sentinel errors.
 func classifyTransportError(err error) error {
 	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
 		return fmt.Errorf("%w: %w", ErrUpstreamTimeout, err)
@@ -117,7 +117,7 @@ func classifyTransportError(err error) error {
 	return fmt.Errorf("%w: %w", ErrUpstreamUnavailable, err)
 }
 
-// decodeUpstreamError reads the upstream error body and wraps it in a status-specific sentinel error.
+// decodeUpstreamError wraps a non-2xx response in a status-specific sentinel.
 func decodeUpstreamError(resp *http.Response) error {
 	sentinel := classifyStatus(resp.StatusCode)
 
