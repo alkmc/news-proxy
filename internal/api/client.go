@@ -1,6 +1,7 @@
 package api
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -37,18 +38,13 @@ func NewClient(cfg Config) (*Client, error) {
 		return nil, fmt.Errorf("failed to parse base URL: %w", err)
 	}
 
-	logger := cfg.Logger
-	if logger == nil {
-		logger = slog.Default()
-	}
-
 	return &Client{
 		baseParsedURL: base,
 		apiKey:        cfg.APIKey,
 		pageSize:      cfg.PageSize,
 		maxResults:    cfg.MaxResults,
 		httpClient:    &http.Client{Timeout: cfg.Timeout, Transport: customTransport()},
-		logger:        logger,
+		logger:        cmp.Or(cfg.Logger, slog.Default()),
 	}, nil
 }
 

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"cmp"
 	"log/slog"
 	"net/http"
 	"time"
@@ -35,9 +36,7 @@ func staticCache(next http.Handler) http.Handler {
 
 // logMD logs method, path, and request duration.
 func logMD(logger *slog.Logger) middleware {
-	if logger == nil {
-		logger = slog.Default()
-	}
+	logger = cmp.Or(logger, slog.Default())
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()

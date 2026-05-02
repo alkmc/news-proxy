@@ -1,6 +1,7 @@
 package config
 
 import (
+	"cmp"
 	"errors"
 	"net"
 	"os"
@@ -18,10 +19,7 @@ const (
 )
 
 func GetPort() string {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = defaultPort
-	}
+	port := cmp.Or(os.Getenv("PORT"), defaultPort)
 	return net.JoinHostPort("", port)
 }
 
