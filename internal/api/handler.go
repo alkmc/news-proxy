@@ -29,12 +29,14 @@ type newsClient interface {
 	GetMaxResults() int
 }
 
+// NewsHandler renders the index page and serves search results.
 type NewsHandler struct {
 	client newsClient
 	tpl    *template.Template
 	logger *slog.Logger
 }
 
+// NewNewsHandler builds a NewsHandler with the given client, template, and logger.
 func NewNewsHandler(client newsClient, tpl *template.Template, logger *slog.Logger,
 ) *NewsHandler {
 	return &NewsHandler{
@@ -44,45 +46,34 @@ func NewNewsHandler(client newsClient, tpl *template.Template, logger *slog.Logg
 	}
 }
 
+// Index renders the empty search page.
 func (h *NewsHandler) Index(w http.ResponseWriter, r *http.Request) {
 	h.render(w, nil)
 }
 
+// Search validates query parameters, fetches articles from NewsAPI, and renders the results page.
 func (h *NewsHandler) Search(w http.ResponseWriter, r *http.Request) {
-	params := r.URL.Query()
-
-	searchKey, err := validateQuery(params.Get("q"))
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	page, err := validatePage(params.Get("page"))
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
 	pageSize := h.client.GetPageSize()
 	maxResults := h.client.GetMaxResults()
 	maxAllowedPages := countPages(maxResults, pageSize)
 
-	if page > maxAllowedPages {
-		http.Error(w, "page limit exceeded", http.StatusBadRequest)
+	query, page, err := parseSearchParams(r, maxAllowedPages)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	results, err := h.client.Fetch(r.Context(), searchKey, page)
+	results, err := h.client.Fetch(r.Context(), query, page)
 	if err != nil {
 		h.handleFetchError(w, err)
 		return
 	}
 
 	s := &searchNews{
-		SearchKey:   searchKey,
+		SearchKey:   query,
 		CurrentPage: page,
 		Results:     *results,
-		TotalPages:  countPagesWithLimit(results.TotalResults, pageSize, maxResults),
+		TotalPages:  countPages(min(results.TotalResults, maxResults), pageSize),
 	}
 
 	h.render(w, s)
@@ -127,10 +118,27 @@ func (h *NewsHandler) handleFetchError(w http.ResponseWriter, err error) {
 	}
 }
 
+func parseSearchParams(r *http.Request, maxAllowedPages int) (query string, page int, err error) {
+	q := r.URL.Query()
+
+	query, err = validateQuery(q.Get("q"))
+	if err != nil {
+		return "", 0, err
+	}
+	page, err = validatePage(q.Get("page"))
+	if err != nil {
+		return "", 0, err
+	}
+	if page > maxAllowedPages {
+		return "", 0, errors.New("page limit exceeded")
+	}
+	return query, page, nil
+}
+
 func validateQuery(q string) (string, error) {
 	q = strings.TrimSpace(q)
 	if q == "" {
-		return "", fmt.Errorf("query is required")
+		return "", errors.New("query is required")
 	}
 	if utf8.RuneCountInString(q) > maxQueryLength {
 		return "", fmt.Errorf("query too long (max %d characters)", maxQueryLength)
@@ -144,7 +152,7 @@ func validatePage(pageStr string) (int, error) {
 	}
 	page, err := strconv.Atoi(pageStr)
 	if err != nil || page < 1 {
-		return 0, fmt.Errorf("invalid page parameter")
+		return 0, errors.New("invalid page parameter")
 	}
 	return page, nil
 }
@@ -155,9 +163,4 @@ func countPages(total, pageSize int) int {
 		return 0
 	}
 	return (total + pageSize - 1) / pageSize
-}
-
-// countPagesWithLimit caps total at limit, then counts pages.
-func countPagesWithLimit(total, pageSize, limit int) int {
-	return countPages(min(total, limit), pageSize)
 }

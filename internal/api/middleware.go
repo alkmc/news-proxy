@@ -1,6 +1,7 @@
 package api
 
 import (
+	"cmp"
 	"log/slog"
 	"net/http"
 	"time"
@@ -14,7 +15,8 @@ const (
 	staticCachePolicy = "public, max-age=86400"
 
 	// contentSecurityPolicy allows arbitrary HTTPS images for NewsAPI publishers.
-	contentSecurityPolicy = `default-src 'self'; script-src 'none'; img-src 'self' https:; form-action 'self'; frame-ancestors 'none'; base-uri 'none'`
+	contentSecurityPolicy = "default-src 'self'; script-src 'none'; img-src 'self' https:; " +
+		"form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
 )
 
 func securityHeaders(next http.Handler) http.Handler {
@@ -35,9 +37,7 @@ func staticCache(next http.Handler) http.Handler {
 
 // logMD logs method, path, and request duration.
 func logMD(logger *slog.Logger) middleware {
-	if logger == nil {
-		logger = slog.Default()
-	}
+	logger = cmp.Or(logger, slog.Default())
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
