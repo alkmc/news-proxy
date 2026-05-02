@@ -30,7 +30,7 @@ func run(logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	tpl, err := template.ParseFS(web.FS, "template/index.html")
+	tpl, err := template.ParseFS(web.TemplateFS, "template/index.html")
 	if err != nil {
 		return fmt.Errorf("failed to parse template: %w", err)
 	}
