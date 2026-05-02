@@ -40,15 +40,17 @@ func run(logger *slog.Logger) error {
 
 	port := config.GetPort()
 	mux := http.NewServeMux()
+
 	s := http.Server{
-		Addr:         port,
-		Handler:      mux,
-		ReadTimeout:  config.ReadTimeout,
-		WriteTimeout: config.WriteTimeout,
-		IdleTimeout:  config.IdleTimeout,
+		Addr:              port,
+		Handler:           api.LogMD(logger)(mux),
+		ReadTimeout:       config.ReadTimeout,
+		ReadHeaderTimeout: config.ReadHeaderTimeout,
+		WriteTimeout:      config.WriteTimeout,
+		IdleTimeout:       config.IdleTimeout,
 	}
 
-	mux.Handle("GET /static/", http.FileServer(http.FS(web.FS)))
+	mux.Handle("GET /static/", api.CacheMiddleware(http.FileServer(http.FS(web.FS))))
 	mux.HandleFunc("GET /search", h.Search)
 	mux.HandleFunc("GET /{$}", h.Index)
 

@@ -44,7 +44,7 @@ func (h *NewsHandler) Search(w http.ResponseWriter, r *http.Request) {
 	}
 
 	next, err := strconv.Atoi(page)
-	if err != nil {
+	if err != nil || next < 1 {
 		http.Error(w, "invalid page parameter", http.StatusBadRequest)
 		return
 	}
