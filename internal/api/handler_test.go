@@ -17,7 +17,7 @@ func TestNewsHandler_Index(t *testing.T) {
 	t.Parallel()
 
 	h := setupTestHandler(&mockNewsClient{})
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
 
 	h.Index(rr, req)
