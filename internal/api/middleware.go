@@ -9,8 +9,21 @@ import (
 // middleware wraps an http.Handler.
 type middleware func(http.Handler) http.Handler
 
-// staticCachePolicy is the Cache-Control value for static assets (24h).
-const staticCachePolicy = "public, max-age=86400"
+const (
+	// staticCachePolicy is the Cache-Control value for static assets (24h).
+	staticCachePolicy = "public, max-age=86400"
+
+	// contentSecurityPolicy allows arbitrary HTTPS images for NewsAPI publishers.
+	contentSecurityPolicy = "default-src 'self'; script-src 'none'; style-src 'self'; " +
+		"img-src 'self' https:; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
+)
+
+func cspMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Security-Policy", contentSecurityPolicy)
+		next.ServeHTTP(w, r)
+	})
+}
 
 func cacheMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
