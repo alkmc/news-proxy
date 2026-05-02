@@ -11,11 +11,17 @@ import (
 	"time"
 )
 
+type NewsClient interface {
+	Fetch(ctx context.Context, searchKey string, page int) (*results, error)
+	GetPageSize() int
+	GetMaxResults() int
+}
+
 type Client struct {
 	baseParsedURL *url.URL
 	apiKey        string
-	PageSize      int
-	MaxResults    int
+	pageSize      int
+	maxResults    int
 	httpClient    *http.Client
 	logger        *slog.Logger
 }
@@ -44,8 +50,8 @@ func NewClient(cfg Config) (*Client, error) {
 	return &Client{
 		baseParsedURL: base,
 		apiKey:        cfg.APIKey,
-		PageSize:      cfg.PageSize,
-		MaxResults:    cfg.MaxResults,
+		pageSize:      cfg.PageSize,
+		maxResults:    cfg.MaxResults,
 		httpClient:    &http.Client{Timeout: cfg.Timeout},
 		logger:        logger,
 	}, nil
@@ -62,12 +68,20 @@ func (c *Client) Fetch(ctx context.Context, searchKey string, page int) (*result
 	return &res, nil
 }
 
+func (c *Client) GetPageSize() int {
+	return c.pageSize
+}
+
+func (c *Client) GetMaxResults() int {
+	return c.maxResults
+}
+
 func (c *Client) endpoint(searchKey string, page int) string {
 	u := c.baseParsedURL.JoinPath("/v2/everything")
 
 	q := url.Values{
 		"q":        {searchKey},
-		"pageSize": {strconv.Itoa(c.PageSize)},
+		"pageSize": {strconv.Itoa(c.pageSize)},
 		"page":     {strconv.Itoa(page)},
 		"sortBy":   {"publishedAt"},
 		"language": {"en"},
