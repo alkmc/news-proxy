@@ -3,13 +3,19 @@ package api
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"html/template"
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
+	"unicode/utf8"
 )
+
+// maxQueryLength caps queries in runes, not bytes.
+const maxQueryLength = 200
 
 var bufPool = sync.Pool{
 	New: func() any {
@@ -44,9 +50,14 @@ func (h *NewsHandler) Index(w http.ResponseWriter, r *http.Request) {
 
 func (h *NewsHandler) Search(w http.ResponseWriter, r *http.Request) {
 	params := r.URL.Query()
-	searchKey := params.Get("q")
 
-	page, err := h.validatePage(params.Get("page"))
+	searchKey, err := validateQuery(params.Get("q"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	page, err := validatePage(params.Get("page"))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -63,8 +74,7 @@ func (h *NewsHandler) Search(w http.ResponseWriter, r *http.Request) {
 
 	results, err := h.client.Fetch(r.Context(), searchKey, page)
 	if err != nil {
-		h.logger.Error("failed to fetch news", slog.Any("error", err))
-		http.Error(w, "failed to fetch news", http.StatusInternalServerError)
+		h.handleFetchError(w, err)
 		return
 	}
 
@@ -76,17 +86,6 @@ func (h *NewsHandler) Search(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.render(w, s)
-}
-
-func (h *NewsHandler) validatePage(pageStr string) (int, error) {
-	if pageStr == "" {
-		return 1, nil
-	}
-	page, err := strconv.Atoi(pageStr)
-	if err != nil || page < 1 {
-		return 0, fmt.Errorf("invalid page parameter")
-	}
-	return page, nil
 }
 
 func (h *NewsHandler) render(w http.ResponseWriter, data *searchNews) {
@@ -106,7 +105,51 @@ func (h *NewsHandler) render(w http.ResponseWriter, data *searchNews) {
 	}
 }
 
-// countPages calculates the total number of pages based on the total number of items and page size.
+func (h *NewsHandler) handleFetchError(w http.ResponseWriter, err error) {
+	h.logger.Error("failed to fetch news", slog.Any("error", err))
+
+	switch {
+	case errors.Is(err, ErrUpstreamTimeout):
+		http.Error(w, "upstream timeout", http.StatusGatewayTimeout)
+	case errors.Is(err, ErrUpstreamRateLimit):
+		w.Header().Set("Retry-After", "60")
+		http.Error(w, "rate limit exceeded, try later", http.StatusServiceUnavailable)
+	case errors.Is(err, ErrUpstreamUnauthorized):
+		http.Error(w, "service misconfigured", http.StatusBadGateway)
+	case errors.Is(err, ErrUpstreamBadRequest):
+		http.Error(w, "invalid search query", http.StatusBadRequest)
+	case errors.Is(err, ErrUpstreamServer),
+		errors.Is(err, ErrUpstreamUnavailable),
+		errors.Is(err, ErrInvalidResponse):
+		http.Error(w, "upstream unavailable", http.StatusBadGateway)
+	default:
+		http.Error(w, "failed to fetch news", http.StatusInternalServerError)
+	}
+}
+
+func validateQuery(q string) (string, error) {
+	q = strings.TrimSpace(q)
+	if q == "" {
+		return "", fmt.Errorf("query is required")
+	}
+	if utf8.RuneCountInString(q) > maxQueryLength {
+		return "", fmt.Errorf("query too long (max %d characters)", maxQueryLength)
+	}
+	return q, nil
+}
+
+func validatePage(pageStr string) (int, error) {
+	if pageStr == "" {
+		return 1, nil
+	}
+	page, err := strconv.Atoi(pageStr)
+	if err != nil || page < 1 {
+		return 0, fmt.Errorf("invalid page parameter")
+	}
+	return page, nil
+}
+
+// countPages returns the number of pages, rounding up; 0 if total or pageSize is non-positive.
 func countPages(total, pageSize int) int {
 	if total <= 0 || pageSize <= 0 {
 		return 0
@@ -114,7 +157,7 @@ func countPages(total, pageSize int) int {
 	return (total + pageSize - 1) / pageSize
 }
 
-// countPagesWithLimit calculates the total number of pages, capping the total items at the specified limit.
+// countPagesWithLimit caps total at limit, then counts pages.
 func countPagesWithLimit(total, pageSize, limit int) int {
 	return countPages(min(total, limit), pageSize)
 }

@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -20,7 +21,7 @@ type Client struct {
 	logger        *slog.Logger
 }
 
-// Config defines the configuration for the API Client.
+// Config configures the API Client.
 type Config struct {
 	BaseURL    string
 	APIKey     string
@@ -93,23 +94,53 @@ func (c *Client) fetch(ctx context.Context, endpoint string, res *results) error
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("could not fetch data: %w", err)
+		return classifyTransportError(err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		var newsErr newsAPIError
-		if err := json.NewDecoder(resp.Body).Decode(&newsErr); err != nil {
-			return fmt.Errorf("json decoding error (status %d): %w", resp.StatusCode, err)
-		}
-		return fmt.Errorf("api error (status %d): %s", resp.StatusCode, newsErr.Message)
+		return decodeUpstreamError(resp)
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(res); err != nil {
-		return fmt.Errorf("json decoding error: %w", err)
+		return fmt.Errorf("%w: %w", ErrInvalidResponse, err)
 	}
 
 	return nil
+}
+
+// classifyTransportError maps timeouts and network errors to sentinel errors.
+func classifyTransportError(err error) error {
+	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+		return fmt.Errorf("%w: %w", ErrUpstreamTimeout, err)
+	}
+	return fmt.Errorf("%w: %w", ErrUpstreamUnavailable, err)
+}
+
+// decodeUpstreamError wraps a non-2xx response in a status-specific sentinel.
+func decodeUpstreamError(resp *http.Response) error {
+	sentinel := classifyStatus(resp.StatusCode)
+
+	var newsErr newsAPIError
+	if err := json.NewDecoder(resp.Body).Decode(&newsErr); err != nil {
+		return fmt.Errorf("%w: status %d: failed to decode body: %w", sentinel, resp.StatusCode, err)
+	}
+	return fmt.Errorf("%w: status %d: %s", sentinel, resp.StatusCode, newsErr.Message)
+}
+
+func classifyStatus(status int) error {
+	switch {
+	case status == http.StatusUnauthorized, status == http.StatusForbidden:
+		return ErrUpstreamUnauthorized
+	case status == http.StatusTooManyRequests:
+		return ErrUpstreamRateLimit
+	case status == http.StatusBadRequest:
+		return ErrUpstreamBadRequest
+	case status >= 500:
+		return ErrUpstreamServer
+	default:
+		return ErrUpstreamServer
+	}
 }
 
 func (c *Client) newRequest(ctx context.Context, endpoint string) (*http.Request, error) {

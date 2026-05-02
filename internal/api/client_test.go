@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -17,6 +18,7 @@ func TestClient_Fetch(t *testing.T) {
 		mockBody     string
 		wantErr      bool
 		errContains  string
+		wantSentinel error
 		validateResp func(t *testing.T, res *results)
 	}{
 		{
@@ -59,22 +61,33 @@ func TestClient_Fetch(t *testing.T) {
 				"code": "apiKeyInvalid",
 				"message": "Your API key is invalid or incorrect."
 			}`,
-			wantErr:     true,
-			errContains: "api error (status 401): Your API key is invalid or incorrect.",
+			wantErr:      true,
+			errContains:  "upstream unauthorized: status 401: Your API key is invalid or incorrect.",
+			wantSentinel: ErrUpstreamUnauthorized,
 		},
 		{
 			name:        "api error with bad json",
 			mockStatus:  http.StatusInternalServerError,
 			mockBody:    `<html>500 Internal Server Error</html>`,
-			wantErr:     true,
-			errContains: "json decoding error (status 500)",
+			wantErr:      true,
+			errContains:  "upstream server error: status 500: failed to decode body",
+			wantSentinel: ErrUpstreamServer,
+		},
+		{
+			name:        "rate limit",
+			mockStatus:  http.StatusTooManyRequests,
+			mockBody:    `{"status":"error","code":"rateLimited","message":"slow down"}`,
+			wantErr:      true,
+			errContains:  "upstream rate limit exceeded: status 429: slow down",
+			wantSentinel: ErrUpstreamRateLimit,
 		},
 		{
 			name:        "bad json",
 			mockStatus:  http.StatusOK,
 			mockBody:    `{ bad json ]`,
-			wantErr:     true,
-			errContains: "json decoding error",
+			wantErr:      true,
+			errContains:  "invalid upstream response",
+			wantSentinel: ErrInvalidResponse,
 		},
 	}
 
@@ -104,6 +117,9 @@ func TestClient_Fetch(t *testing.T) {
 				}
 				if tc.errContains != "" && !strings.Contains(err.Error(), tc.errContains) {
 					t.Errorf("expected error to contain %q, got %q", tc.errContains, err.Error())
+				}
+				if tc.wantSentinel != nil && !errors.Is(err, tc.wantSentinel) {
+					t.Errorf("expected error to wrap %v, got %v", tc.wantSentinel, err)
 				}
 				return
 			}
