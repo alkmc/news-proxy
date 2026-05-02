@@ -46,15 +46,12 @@ func run(logger *slog.Logger) error {
 	if err != nil {
 		return fmt.Errorf("failed to create news client: %w", err)
 	}
-	h := api.NewNewsHandler(client, tpl, logger)
 
-	mux := http.NewServeMux()
-	mux.Handle("GET /static/", api.CacheMiddleware(http.FileServer(http.FS(web.FS))))
-	mux.HandleFunc("GET /search", h.Search)
-	mux.HandleFunc("GET /{$}", h.Index)
+	h := api.NewNewsHandler(client, tpl, logger)
+	mux := api.NewMux(h)
 
 	port := config.GetPort()
-	srv := api.NewServer(port, api.LogMD(logger)(mux))
+	srv := api.NewServer(port, mux)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
