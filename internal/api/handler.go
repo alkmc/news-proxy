@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"html/template"
 	"log/slog"
@@ -16,13 +17,19 @@ var bufPool = sync.Pool{
 	},
 }
 
+type newsClient interface {
+	Fetch(ctx context.Context, searchKey string, page int) (*results, error)
+	GetPageSize() int
+	GetMaxResults() int
+}
+
 type NewsHandler struct {
-	client *Client
+	client newsClient
 	tpl    *template.Template
 	logger *slog.Logger
 }
 
-func NewNewsHandler(client *Client, tpl *template.Template, logger *slog.Logger,
+func NewNewsHandler(client newsClient, tpl *template.Template, logger *slog.Logger,
 ) *NewsHandler {
 	return &NewsHandler{
 		client: client,
@@ -45,7 +52,11 @@ func (h *NewsHandler) Search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if page > h.calculateTotalPages(h.client.MaxResults) {
+	pageSize := h.client.GetPageSize()
+	maxResults := h.client.GetMaxResults()
+	maxAllowedPages := countPages(maxResults, pageSize)
+
+	if page > maxAllowedPages {
 		http.Error(w, "page limit exceeded", http.StatusBadRequest)
 		return
 	}
@@ -61,7 +72,7 @@ func (h *NewsHandler) Search(w http.ResponseWriter, r *http.Request) {
 		SearchKey:   searchKey,
 		CurrentPage: page,
 		Results:     *results,
-		TotalPages:  h.calculateTotalPages(results.TotalResults),
+		TotalPages:  countPagesWithLimit(results.TotalResults, pageSize, maxResults),
 	}
 
 	h.render(w, s)
@@ -76,15 +87,6 @@ func (h *NewsHandler) validatePage(pageStr string) (int, error) {
 		return 0, fmt.Errorf("invalid page parameter")
 	}
 	return page, nil
-}
-
-func (h *NewsHandler) calculateTotalPages(totalResults int) int {
-	pages := totalPages(totalResults, h.client.PageSize)
-	maxAllowed := totalPages(h.client.MaxResults, h.client.PageSize)
-	if pages > maxAllowed {
-		return maxAllowed
-	}
-	return pages
 }
 
 func (h *NewsHandler) render(w http.ResponseWriter, data *searchNews) {
@@ -104,9 +106,15 @@ func (h *NewsHandler) render(w http.ResponseWriter, data *searchNews) {
 	}
 }
 
-func totalPages(total, pageSize int) int {
+// countPages calculates the total number of pages based on the total number of items and page size.
+func countPages(total, pageSize int) int {
 	if total <= 0 || pageSize <= 0 {
 		return 0
 	}
 	return (total + pageSize - 1) / pageSize
+}
+
+// countPagesWithLimit calculates the total number of pages, capping the total items at the specified limit.
+func countPagesWithLimit(total, pageSize, limit int) int {
+	return countPages(min(total, limit), pageSize)
 }
