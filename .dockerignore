@@ -1,0 +1,17 @@
+# Version control
+.git/
+
+# IDE & Editor specific
+.idea/
+.vscode/
+
+# Build artifacts
+*.test
+*.out
+
+# Artifacts
+task.md
+
+# Application specific ignores (optional)
+index.html
+api.rest
