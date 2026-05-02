@@ -15,9 +15,29 @@
   --text: light-dark(#333, #e0e0e0);
   --logo: #111;
   --btn-border: light-dark(#004400, #2ec1ac);
-  --bg: light-dark(#fff, #121212);
-  --input-bg: light-dark(#003b00, #fff);
+  --bg: light-dark(#e0e0e0, #121212);
+  --input-bg: #fff;
   --input-text: #111;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --dark-green: #3a9e78;
+  --dark-grey:  #9e9e9e;
+  --text:       #e0e0e0;
+  --btn-border: #2ec1ac;
+  --bg:         #121212;
+  --input-bg:   #fff;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --dark-green: #003b00;
+  --dark-grey:  #777;
+  --text:       #333;
+  --btn-border: #004400;
+  --bg:         #e0e0e0;
+  --input-bg:   #fff;
 }
 
 body {
@@ -42,10 +62,6 @@ a {
     font-size: 14px;
     font-weight: 400;
 
-    &.github-button {
-      color: #111;
-      font-weight: 700;
-    }
 
     &:hover {
       text-decoration: none;
@@ -73,7 +89,20 @@ header {
     font-weight: 700;
   }
 
+  .theme-toggle {
+    background: none;
+    border: 2px solid #111;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 4px 8px;
+    line-height: 1;
+  }
+
   form {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
     height: calc(100% - 10px);
   }
 
@@ -147,6 +176,8 @@ header {
 
 .pagination {
   margin-top: 20px;
+  display: flex;
+  justify-content: center;
 
   .previous-page {
     margin-right: 20px;
@@ -168,9 +199,6 @@ header {
       width: 100%;
     }
 
-    .github-button {
-      display: none;
-    }
   }
 
   .title {
