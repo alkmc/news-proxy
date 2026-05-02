@@ -63,6 +63,13 @@ func TestClient_Fetch(t *testing.T) {
 			errContains: "api error (status 401): Your API key is invalid or incorrect.",
 		},
 		{
+			name:        "api error with bad json",
+			mockStatus:  http.StatusInternalServerError,
+			mockBody:    `<html>500 Internal Server Error</html>`,
+			wantErr:     true,
+			errContains: "json decoding error (status 500)",
+		},
+		{
 			name:        "bad json",
 			mockStatus:  http.StatusOK,
 			mockBody:    `{ bad json ]`,
@@ -118,6 +125,18 @@ func setupMockServer(t *testing.T, statusCode int, responseBody string) *httptes
 		if r.URL.Path != "/v2/everything" {
 			t.Errorf("expected path '/v2/everything', got %s", r.URL.Path)
 		}
+
+		q := r.URL.Query()
+		if q.Get("q") != "golang" {
+			t.Errorf("expected query parameter 'q' to be 'golang', got %q", q.Get("q"))
+		}
+		if q.Get("page") != "1" {
+			t.Errorf("expected query parameter 'page' to be '1', got %q", q.Get("page"))
+		}
+		if q.Get("pageSize") != "10" {
+			t.Errorf("expected query parameter 'pageSize' to be '10', got %q", q.Get("pageSize"))
+		}
+
 		if r.Header.Get("Authorization") != "test-key" {
 			t.Errorf("expected Authorization header 'test-key', got %s", r.Header.Get("Authorization"))
 		}

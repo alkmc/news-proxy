@@ -61,6 +61,22 @@ func TestNewsHandler_Search(t *testing.T) {
 			bodyContains:   "Query: golang, Page: 5, TotalPages: 10",
 		},
 		{
+			name:      "empty page defaults to 1",
+			targetURL: "/search?q=golang",
+			mockClient: &mockNewsClient{
+				mockFetchFn: func(ctx context.Context, searchKey string, page int) (*results, error) {
+					if page != 1 {
+						return nil, errors.New("expected page 1")
+					}
+					return &results{Status: "ok", TotalResults: 1}, nil
+				},
+				pageSize:   10,
+				maxResults: 100,
+			},
+			expectedStatus: http.StatusOK,
+			bodyContains:   "Query: golang, Page: 1, TotalPages: 1",
+		},
+		{
 			name:           "invalid page parameter",
 			targetURL:      "/search?q=golang&page=invalid",
 			mockClient:     &mockNewsClient{},
