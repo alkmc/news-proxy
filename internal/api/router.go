@@ -8,7 +8,7 @@ import (
 
 func NewMux(h *NewsHandler) *http.ServeMux {
 	mux := http.NewServeMux()
-	mux.Handle("GET /static/", CacheMiddleware(http.FileServerFS(web.FS)))
+	mux.Handle("GET /static/", cacheMiddleware(http.FileServerFS(web.FS)))
 	mux.HandleFunc("GET /search", h.Search)
 	mux.HandleFunc("GET /{$}", h.Index)
 	return mux
