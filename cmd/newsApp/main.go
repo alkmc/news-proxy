@@ -11,9 +11,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/alkmc/firstGoApp/internal/api"
-	"github.com/alkmc/firstGoApp/internal/config"
-	"github.com/alkmc/firstGoApp/web"
+	"github.com/alkmc/news-proxy/internal/api"
+	"github.com/alkmc/news-proxy/internal/config"
+	"github.com/alkmc/news-proxy/web"
 )
 
 func main() {
