@@ -49,7 +49,7 @@ func run(logger *slog.Logger) error {
 	h := api.NewNewsHandler(client, tpl, logger)
 
 	mux := http.NewServeMux()
-	mux.Handle("GET /static/", api.CacheMiddleware(http.FileServer(http.FS(web.FS))))
+	mux.Handle("GET /static/", api.CacheMiddleware(http.FileServerFS(web.FS)))
 	mux.HandleFunc("GET /search", h.Search)
 	mux.HandleFunc("GET /{$}", h.Index)
 
