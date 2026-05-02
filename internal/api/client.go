@@ -51,7 +51,6 @@ func (c *Client) endpoint(searchKey string, page int) string {
 		"q":        {searchKey},
 		"pageSize": {strconv.Itoa(c.PageSize)},
 		"page":     {strconv.Itoa(page)},
-		"apiKey":   {c.apiKey},
 		"sortBy":   {"publishedAt"},
 		"language": {"en"},
 	}
@@ -65,6 +64,8 @@ func (c *Client) fetch(ctx context.Context, endpoint string, res *results) error
 	if err != nil {
 		return fmt.Errorf("could not create request: %w", err)
 	}
+
+	req.Header.Set("Authorization", c.apiKey)
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
