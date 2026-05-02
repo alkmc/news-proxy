@@ -1,66 +1,67 @@
-*, *::before, *::after {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-  }
-  
-  :root {
-    --turquoise: #2ec1ac;
-    --dark-green: #003b00;
-    --dark-grey: #777;
-    --light-grey: #dadce0;
-  }
-  
-  body {
-    font-family: system-ui, sans-serif;
-  }
-  
-  a {
-    text-decoration: none;
-    color: #333;
-  }
-  
-  a:hover {
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --turquoise: #2ec1ac;
+  --dark-green: #003b00;
+  --dark-grey: #777;
+  --light-grey: #dadce0;
+}
+
+body {
+  font-family: system-ui, sans-serif;
+}
+
+a {
+  text-decoration: none;
+  color: #333;
+
+  &:hover {
     text-decoration: underline;
   }
-  
-  a.button {
+
+  &.button {
     border: 2px solid #004400;
     color: var(--dark-green);
     border-radius: 4px;
     padding: 6px 24px;
     font-size: 14px;
     font-weight: 400;
+
+    &:hover {
+      text-decoration: none;
+      background-color: var(--dark-green);
+      color: var(--turquoise);
+    }
   }
-  
-  a.button:hover {
-    text-decoration: none;
-    background-color: var(--dark-green);
-    color: var(--turquoise);
-  }
-  
-  header {
-    width: 100%;
-    height: 50px;
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    display: flex;
-    justify-content: space-between;
-    background-color: var(--turquoise);
-    padding: 5px 10px;
-    align-items: center;
-  }
-  
+}
+
+header {
+  width: 100%;
+  height: 50px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  background-color: var(--turquoise);
+  padding: 5px 10px;
+  align-items: center;
+
   .logo {
     color: #002200;
   }
-  
+
   form {
     height: calc(100% - 10px);
   }
-  
+
   .search-input {
     width: 500px;
     height: 100%;
@@ -72,99 +73,100 @@
     line-height: 1.4;
     padding-left: 5px;
   }
-  
-  .container {
-    width: 100%;
-    max-width: 720px;
-    margin: 0 auto;
-    padding: 80px 20px 40px;
-  }
-  
-  .result-count {
-    color: var(--dark-grey);
-    text-align: center;
-    margin-bottom: 15px;
-  }
-  
-  .search-results {
-    list-style: none;
-  }
-  
-  .news-article {
-    display: flex;
-    align-items: flex-start;
-    margin-bottom: 30px;
-    border: 1px solid var(--turquoise);
-    padding: 15px;
-    border-radius: 4px;
-    justify-content: space-between;
-  }
-  
+}
+
+.container {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 80px 20px 40px;
+}
+
+.result-count {
+  color: var(--dark-grey);
+  text-align: center;
+  margin-bottom: 15px;
+}
+
+.search-results {
+  list-style: none;
+}
+
+.news-article {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 30px;
+  border: 1px solid var(--turquoise);
+  padding: 15px;
+  border-radius: 4px;
+  justify-content: space-between;
+
   .article-image {
     width: 200px;
     flex-grow: 0;
     flex-shrink: 0;
     margin-left: 20px;
   }
-  
+
   .title {
     margin-bottom: 15px;
   }
-  
+
   .description {
     color: var(--dark-grey);
     margin-bottom: 15px;
   }
-  
+
   .metadata {
     display: flex;
     color: var(--dark-green);
     font-size: 14px;
+
+    .published-date::before {
+      content: '\0000a0\002022\0000a0';
+      margin: 0 3px;
+    }
   }
-  
-  .published-date::before {
-    content: '\0000a0\002022\0000a0';
-    margin: 0 3px;
-  }
-  
-  .pagination {
-    margin-top: 20px;
-  }
-  
+}
+
+.pagination {
+  margin-top: 20px;
+
   .previous-page {
     margin-right: 20px;
   }
-  
-  @media screen and (max-width: 550px) {
-    header {
-      flex-direction: column;
-      height: auto;
-      padding-bottom: 10px;
-    }
-  
+}
+
+@media screen and (max-width: 550px) {
+  header {
+    flex-direction: column;
+    height: auto;
+    padding-bottom: 10px;
+
     .logo {
       display: inline-block;
       margin-bottom: 10px;
     }
-  
-    form, .search-input {
+
+    form,
+    .search-input {
       width: 100%;
     }
-  
+
     .github-button {
       display: none;
     }
-  
-    .title {
-      font-size: 18px;
-    }
-  
-    .description {
-      font-size: 14px;
-    }
-  
-    .article-image {
-      display: none;
-    }
   }
-  
+
+  .title {
+    font-size: 18px;
+  }
+
+  .description {
+    font-size: 14px;
+  }
+
+  .article-image {
+    display: none;
+  }
+}
