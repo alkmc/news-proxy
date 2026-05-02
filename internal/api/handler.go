@@ -130,7 +130,7 @@ func (h *NewsHandler) handleFetchError(w http.ResponseWriter, err error) {
 func validateQuery(q string) (string, error) {
 	q = strings.TrimSpace(q)
 	if q == "" {
-		return "", fmt.Errorf("query is required")
+		return "", errors.New("query is required")
 	}
 	if utf8.RuneCountInString(q) > maxQueryLength {
 		return "", fmt.Errorf("query too long (max %d characters)", maxQueryLength)
@@ -144,7 +144,7 @@ func validatePage(pageStr string) (int, error) {
 	}
 	page, err := strconv.Atoi(pageStr)
 	if err != nil || page < 1 {
-		return 0, fmt.Errorf("invalid page parameter")
+		return 0, errors.New("invalid page parameter")
 	}
 	return page, nil
 }
