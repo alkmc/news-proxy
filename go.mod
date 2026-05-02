@@ -1,3 +1,3 @@
-module github.com/alkmc/firstGoApp
+module github.com/alkmc/news-proxy
 
 go 1.26
