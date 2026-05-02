@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"html/template"
 	"log/slog"
-	"math"
 	"net/http"
 	"strconv"
 	"sync"
@@ -84,5 +83,8 @@ func (h *NewsHandler) render(w http.ResponseWriter, data *searchNews) {
 }
 
 func totalPages(total, pageSize int) int {
-	return int(math.Ceil(float64(total) / float64(pageSize)))
+	if total <= 0 || pageSize <= 0 {
+		return 0
+	}
+	return 1 + (total-1)/pageSize
 }
