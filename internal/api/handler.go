@@ -29,12 +29,14 @@ type newsClient interface {
 	GetMaxResults() int
 }
 
+// NewsHandler renders the index page and serves search results.
 type NewsHandler struct {
 	client newsClient
 	tpl    *template.Template
 	logger *slog.Logger
 }
 
+// NewNewsHandler builds a NewsHandler with the given client, template, and logger.
 func NewNewsHandler(client newsClient, tpl *template.Template, logger *slog.Logger,
 ) *NewsHandler {
 	return &NewsHandler{
@@ -44,10 +46,12 @@ func NewNewsHandler(client newsClient, tpl *template.Template, logger *slog.Logg
 	}
 }
 
+// Index renders the empty search page.
 func (h *NewsHandler) Index(w http.ResponseWriter, r *http.Request) {
 	h.render(w, nil)
 }
 
+// Search validates query parameters, fetches articles from NewsAPI, and renders the results page.
 func (h *NewsHandler) Search(w http.ResponseWriter, r *http.Request) {
 	pageSize := h.client.GetPageSize()
 	maxResults := h.client.GetMaxResults()

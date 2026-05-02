@@ -13,6 +13,7 @@ import (
 	"time"
 )
 
+// Client calls the NewsAPI /v2/everything endpoint with bounded paging.
 type Client struct {
 	baseParsedURL *url.URL
 	apiKey        string
@@ -32,6 +33,7 @@ type Config struct {
 	Logger     *slog.Logger
 }
 
+// NewClient parses the base URL and returns a configured Client.
 func NewClient(cfg Config) (*Client, error) {
 	base, err := url.Parse(cfg.BaseURL)
 	if err != nil {
@@ -48,6 +50,7 @@ func NewClient(cfg Config) (*Client, error) {
 	}, nil
 }
 
+// Fetch returns articles for a query, wrapping upstream failures in sentinel errors.
 func (c *Client) Fetch(ctx context.Context, searchKey string, page int) (*results, error) {
 	endpoint := c.endpoint(searchKey, page)
 
@@ -59,10 +62,12 @@ func (c *Client) Fetch(ctx context.Context, searchKey string, page int) (*result
 	return &res, nil
 }
 
+// GetPageSize returns the configured page size.
 func (c *Client) GetPageSize() int {
 	return c.pageSize
 }
 
+// GetMaxResults returns the configured cap on total results.
 func (c *Client) GetMaxResults() int {
 	return c.maxResults
 }
