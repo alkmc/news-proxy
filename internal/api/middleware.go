@@ -1,6 +1,13 @@
 package api
 
-import "net/http"
+import (
+	"log/slog"
+	"net/http"
+	"time"
+)
+
+// Middleware is a function that wraps an http.Handler.
+type Middleware func(http.Handler) http.Handler
 
 // staticCachePolicy defines a 24-hour cache policy (in seconds) for static assets.
 const staticCachePolicy = "public, max-age=86400"
@@ -10,4 +17,24 @@ func CacheMiddleware(next http.Handler) http.Handler {
 		w.Header().Set("Cache-Control", staticCachePolicy)
 		next.ServeHTTP(w, r)
 	})
+}
+
+// LogMD logs method, path, and request duration.
+func LogMD(logger *slog.Logger) Middleware {
+	if logger == nil {
+		logger = slog.Default()
+	}
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			start := time.Now()
+			defer func() {
+				logger.Info("http request",
+					slog.String("method", r.Method),
+					slog.String("path", r.URL.Path),
+					slog.Duration("duration", time.Since(start)),
+				)
+			}()
+			next.ServeHTTP(w, r)
+		})
+	}
 }

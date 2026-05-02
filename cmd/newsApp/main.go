@@ -40,9 +40,10 @@ func run(logger *slog.Logger) error {
 
 	port := config.GetPort()
 	mux := http.NewServeMux()
+
 	s := http.Server{
 		Addr:              port,
-		Handler:           mux,
+		Handler:           api.LogMD(logger)(mux),
 		ReadTimeout:       config.ReadTimeout,
 		ReadHeaderTimeout: config.ReadHeaderTimeout,
 		WriteTimeout:      config.WriteTimeout,
