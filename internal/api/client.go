@@ -78,12 +78,10 @@ func (c *Client) endpoint(searchKey string, page int) string {
 }
 
 func (c *Client) fetch(ctx context.Context, endpoint string, res *results) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	req, err := c.newRequest(ctx, endpoint)
 	if err != nil {
-		return fmt.Errorf("could not create request: %w", err)
+		return err
 	}
-
-	req.Header.Set("Authorization", c.apiKey)
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -91,27 +89,27 @@ func (c *Client) fetch(ctx context.Context, endpoint string, res *results) error
 	}
 	defer resp.Body.Close()
 
-	dec := json.NewDecoder(resp.Body)
-
 	if resp.StatusCode != http.StatusOK {
 		var newsErr newsAPIError
-		if err := dec.Decode(&newsErr); err != nil {
-			c.logger.Error("json decode error",
-				slog.Any("error", err),
-				slog.Int("status_code", resp.StatusCode),
-			)
+		if err := json.NewDecoder(resp.Body).Decode(&newsErr); err != nil {
 			return fmt.Errorf("json decoding error (status %d): %w", resp.StatusCode, err)
 		}
-		return fmt.Errorf("news api error (status %d): %s", resp.StatusCode, newsErr.Message)
+		return fmt.Errorf("api error (status %d): %s", resp.StatusCode, newsErr.Message)
 	}
 
-	if err := dec.Decode(res); err != nil {
-		c.logger.Error("json decode error",
-			slog.Any("error", err),
-			slog.Int("status_code", resp.StatusCode),
-		)
+	if err := json.NewDecoder(resp.Body).Decode(res); err != nil {
 		return fmt.Errorf("json decoding error: %w", err)
 	}
 
 	return nil
+}
+
+func (c *Client) newRequest(ctx context.Context, endpoint string) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, fmt.Errorf("could not create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", c.apiKey)
+	return req, nil
 }

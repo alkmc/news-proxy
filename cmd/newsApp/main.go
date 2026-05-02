@@ -48,28 +48,20 @@ func run(logger *slog.Logger) error {
 	}
 	h := api.NewNewsHandler(client, tpl, logger)
 
-	port := config.GetPort()
 	mux := http.NewServeMux()
-
-	s := http.Server{
-		Addr:              port,
-		Handler:           api.LogMD(logger)(mux),
-		ReadTimeout:       config.ReadTimeout,
-		ReadHeaderTimeout: config.ReadHeaderTimeout,
-		WriteTimeout:      config.WriteTimeout,
-		IdleTimeout:       config.IdleTimeout,
-	}
-
 	mux.Handle("GET /static/", api.CacheMiddleware(http.FileServer(http.FS(web.FS))))
 	mux.HandleFunc("GET /search", h.Search)
 	mux.HandleFunc("GET /{$}", h.Index)
+
+	port := config.GetPort()
+	srv := api.NewServer(port, api.LogMD(logger)(mux))
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
 	serverErr := make(chan error, 1)
 	go func() {
-		serverErr <- s.ListenAndServe()
+		serverErr <- srv.ListenAndServe()
 	}()
 	logger.Info("server started", slog.String("port", port))
 
@@ -82,7 +74,7 @@ func run(logger *slog.Logger) error {
 		logger.Info("signal closing server received")
 		shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), config.ShutdownTimeout)
 		defer cancel()
-		if err := s.Shutdown(shutdownCtx); err != nil {
+		if err := srv.Shutdown(shutdownCtx); err != nil {
 			return fmt.Errorf("server shutdown failed: %w", err)
 		}
 	}
@@ -93,11 +85,13 @@ func run(logger *slog.Logger) error {
 
 func setupLogger() *slog.Logger {
 	return slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		ReplaceAttr: func(_ []string, a slog.Attr) slog.Attr {
-			if a.Value.Kind() == slog.KindDuration {
-				return slog.String(a.Key, fmt.Sprintf("%dms", a.Value.Duration().Milliseconds()))
-			}
-			return a
-		},
+		ReplaceAttr: loggerReplaceAttrs,
 	}))
+}
+
+func loggerReplaceAttrs(_ []string, a slog.Attr) slog.Attr {
+	if a.Value.Kind() == slog.KindDuration {
+		return slog.String(a.Key, fmt.Sprintf("%dms", a.Value.Duration().Milliseconds()))
+	}
+	return a
 }
