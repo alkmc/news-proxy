@@ -51,7 +51,7 @@ func run(logger *slog.Logger) error {
 	mux := api.NewMux(h)
 
 	port := config.GetPort()
-	srv := api.NewServer(port, api.LogMD(logger)(mux))
+	srv := api.NewServer(port, mux)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
