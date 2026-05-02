@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"fmt"
 	"html/template"
 	"log/slog"
 	"net/http"
@@ -37,24 +38,19 @@ func (h *NewsHandler) Index(w http.ResponseWriter, r *http.Request) {
 func (h *NewsHandler) Search(w http.ResponseWriter, r *http.Request) {
 	params := r.URL.Query()
 	searchKey := params.Get("q")
-	page := params.Get("page")
-	if page == "" {
-		page = "1"
-	}
 
-	next, err := strconv.Atoi(page)
-	if err != nil || next < 1 {
-		http.Error(w, "invalid page parameter", http.StatusBadRequest)
+	page, err := h.validatePage(params.Get("page"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	maxPages := totalPages(h.client.MaxResults, h.client.PageSize)
-	if next > maxPages {
+	if page > h.calculateTotalPages(h.client.MaxResults) {
 		http.Error(w, "page limit exceeded", http.StatusBadRequest)
 		return
 	}
 
-	results, err := h.client.Fetch(r.Context(), searchKey, next)
+	results, err := h.client.Fetch(r.Context(), searchKey, page)
 	if err != nil {
 		h.logger.Error("failed to fetch news", slog.Any("error", err))
 		http.Error(w, "failed to fetch news", http.StatusInternalServerError)
@@ -63,17 +59,32 @@ func (h *NewsHandler) Search(w http.ResponseWriter, r *http.Request) {
 
 	s := &searchNews{
 		SearchKey:   searchKey,
-		CurrentPage: next,
+		CurrentPage: page,
 		Results:     *results,
-		TotalPages:  totalPages(results.TotalResults, h.client.PageSize),
-	}
-
-	// Ensure TotalPages does not exceed the allowed API limit for the UI
-	if s.TotalPages > maxPages {
-		s.TotalPages = maxPages
+		TotalPages:  h.calculateTotalPages(results.TotalResults),
 	}
 
 	h.render(w, s)
+}
+
+func (h *NewsHandler) validatePage(pageStr string) (int, error) {
+	if pageStr == "" {
+		return 1, nil
+	}
+	page, err := strconv.Atoi(pageStr)
+	if err != nil || page < 1 {
+		return 0, fmt.Errorf("invalid page parameter")
+	}
+	return page, nil
+}
+
+func (h *NewsHandler) calculateTotalPages(totalResults int) int {
+	pages := totalPages(totalResults, h.client.PageSize)
+	maxAllowed := totalPages(h.client.MaxResults, h.client.PageSize)
+	if pages > maxAllowed {
+		return maxAllowed
+	}
+	return pages
 }
 
 func (h *NewsHandler) render(w http.ResponseWriter, data *searchNews) {
