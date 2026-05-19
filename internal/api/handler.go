@@ -48,45 +48,55 @@ func NewNewsHandler(client newsClient, tpl *template.Template, logger *slog.Logg
 
 // Index renders the empty search page.
 func (h *NewsHandler) Index(w http.ResponseWriter, r *http.Request) {
-	h.render(w, nil)
+	h.render(w, nil, isHTMX(r))
 }
 
 // Search validates query parameters, fetches articles from NewsAPI, and renders the results page.
 func (h *NewsHandler) Search(w http.ResponseWriter, r *http.Request) {
 	pageSize := h.client.GetPageSize()
 	maxResults := h.client.GetMaxResults()
-	maxAllowedPages := countPages(maxResults, pageSize)
+	maxPages := countPages(maxResults, pageSize)
 
-	query, page, err := parseSearchParams(r, maxAllowedPages)
+	query, page, err := parseSearch(r, maxPages)
+	s := &searchNews{SearchKey: query}
+	withHTMX := isHTMX(r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		s.ErrorMsg = err.Error()
+		h.render(w, s, withHTMX)
 		return
 	}
 
 	results, err := h.client.Fetch(r.Context(), query, page)
 	if err != nil {
-		h.handleFetchError(w, err)
+		h.logger.Error("failed to fetch news", slog.Any("error", err))
+		if errors.Is(err, ErrUpstreamRateLimit) {
+			w.Header().Set("Retry-After", "60")
+		}
+		s.ErrorMsg = mapFetchError(err)
+		h.render(w, s, withHTMX)
 		return
 	}
 
-	s := &searchNews{
-		SearchKey:   query,
-		CurrentPage: page,
-		Results:     *results,
-		TotalPages:  countPages(min(results.TotalResults, maxResults), pageSize),
-	}
+	s.CurrentPage = page
+	s.Results = *results
+	s.TotalPages = countPages(min(results.TotalResults, maxResults), pageSize)
 
-	h.render(w, s)
+	h.render(w, s, withHTMX)
 }
 
-func (h *NewsHandler) render(w http.ResponseWriter, data *searchNews) {
+func (h *NewsHandler) render(w http.ResponseWriter, data *searchNews, withHTMX bool) {
 	buf := bufPool.Get().(*bytes.Buffer)
 	defer func() {
 		buf.Reset()
 		bufPool.Put(buf)
 	}()
 
-	if err := h.tpl.Execute(buf, data); err != nil {
+	tplName := h.tpl.Name()
+	if withHTMX {
+		tplName = "results"
+	}
+
+	if err := h.tpl.ExecuteTemplate(buf, tplName, data); err != nil {
 		h.logger.Error("template execution error", slog.Any("error", err))
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
@@ -96,29 +106,26 @@ func (h *NewsHandler) render(w http.ResponseWriter, data *searchNews) {
 	}
 }
 
-func (h *NewsHandler) handleFetchError(w http.ResponseWriter, err error) {
-	h.logger.Error("failed to fetch news", slog.Any("error", err))
-
+func mapFetchError(err error) string {
 	switch {
 	case errors.Is(err, ErrUpstreamTimeout):
-		http.Error(w, "upstream timeout", http.StatusGatewayTimeout)
+		return "upstream timeout"
 	case errors.Is(err, ErrUpstreamRateLimit):
-		w.Header().Set("Retry-After", "60")
-		http.Error(w, "rate limit exceeded, try later", http.StatusServiceUnavailable)
+		return "rate limit exceeded, try later"
 	case errors.Is(err, ErrUpstreamUnauthorized):
-		http.Error(w, "service misconfigured", http.StatusBadGateway)
+		return "service misconfigured"
 	case errors.Is(err, ErrUpstreamBadRequest):
-		http.Error(w, "invalid search query", http.StatusBadRequest)
+		return "invalid search query"
 	case errors.Is(err, ErrUpstreamServer),
 		errors.Is(err, ErrUpstreamUnavailable),
 		errors.Is(err, ErrInvalidResponse):
-		http.Error(w, "upstream unavailable", http.StatusBadGateway)
+		return "upstream unavailable"
 	default:
-		http.Error(w, "failed to fetch news", http.StatusInternalServerError)
+		return "failed to fetch news"
 	}
 }
 
-func parseSearchParams(r *http.Request, maxAllowedPages int) (query string, page int, err error) {
+func parseSearch(r *http.Request, maxPages int) (query string, page int, err error) {
 	q := r.URL.Query()
 
 	query, err = validateQuery(q.Get("q"))
@@ -129,7 +136,7 @@ func parseSearchParams(r *http.Request, maxAllowedPages int) (query string, page
 	if err != nil {
 		return "", 0, err
 	}
-	if page > maxAllowedPages {
+	if page > maxPages {
 		return "", 0, errors.New("page limit exceeded")
 	}
 	return query, page, nil
@@ -163,4 +170,8 @@ func countPages(total, pageSize int) int {
 		return 0
 	}
 	return (total + pageSize - 1) / pageSize
+}
+
+func isHTMX(r *http.Request) bool {
+	return r.Header.Get("HX-Request") == "true" && r.Header.Get("HX-History-Restore-Request") != "true"
 }

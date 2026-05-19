@@ -213,3 +213,28 @@ header {
     display: none;
   }
 }
+
+/* HTMX Styles (replacing inline styles for strict CSP) */
+.htmx-indicator {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 200ms ease-in;
+  text-align: center;
+  margin-top: 20px;
+}
+.htmx-request .htmx-indicator,
+.htmx-request.htmx-indicator {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Error message component */
+.error-container {
+  text-align: center;
+}
+.error-msg {
+  color: var(--text);
+  padding: 2rem;
+  border-radius: 8px;
+  background: var(--input-bg);
+}

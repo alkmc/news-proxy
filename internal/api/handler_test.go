@@ -82,35 +82,35 @@ func TestNewsHandler_Search(t *testing.T) {
 			name:           "invalid page parameter",
 			targetURL:      "/search?q=golang&page=invalid",
 			mockClient:     &mockNewsClient{},
-			expectedStatus: http.StatusBadRequest,
+			expectedStatus: http.StatusOK,
 			bodyContains:   "invalid page parameter",
 		},
 		{
 			name:           "query too long",
 			targetURL:      "/search?q=" + url.QueryEscape(strings.Repeat("a", maxQueryLength+1)),
 			mockClient:     &mockNewsClient{},
-			expectedStatus: http.StatusBadRequest,
+			expectedStatus: http.StatusOK,
 			bodyContains:   "query too long",
 		},
 		{
 			name:           "empty query",
 			targetURL:      "/search?q=",
 			mockClient:     &mockNewsClient{},
-			expectedStatus: http.StatusBadRequest,
+			expectedStatus: http.StatusOK,
 			bodyContains:   "query is required",
 		},
 		{
 			name:           "missing q parameter",
 			targetURL:      "/search",
 			mockClient:     &mockNewsClient{},
-			expectedStatus: http.StatusBadRequest,
+			expectedStatus: http.StatusOK,
 			bodyContains:   "query is required",
 		},
 		{
 			name:           "whitespace-only query",
 			targetURL:      "/search?q=" + url.QueryEscape("   "),
 			mockClient:     &mockNewsClient{},
-			expectedStatus: http.StatusBadRequest,
+			expectedStatus: http.StatusOK,
 			bodyContains:   "query is required",
 		},
 		{
@@ -142,7 +142,7 @@ func TestNewsHandler_Search(t *testing.T) {
 				pageSize:   10,
 				maxResults: 100,
 			},
-			expectedStatus: http.StatusBadRequest,
+			expectedStatus: http.StatusOK,
 			bodyContains:   "page limit exceeded",
 		},
 		{
@@ -150,11 +150,11 @@ func TestNewsHandler_Search(t *testing.T) {
 			targetURL: "/search?q=golang",
 			mockClient: &mockNewsClient{
 				mockFetchFn: func(context.Context, string, int) (*results, error) {
-					return nil, errors.New("upstream timeout")
+					return nil, ErrUpstreamTimeout
 				},
 			},
-			expectedStatus: http.StatusInternalServerError,
-			bodyContains:   "failed to fetch news",
+			expectedStatus: http.StatusOK,
+			bodyContains:   "upstream timeout",
 		},
 	}
 
@@ -180,7 +180,7 @@ func TestNewsHandler_Search(t *testing.T) {
 
 // setupTestHandler configures a NewsHandler with a dummy template and silent logger.
 func setupTestHandler(client newsClient) *NewsHandler {
-	tplStr := `{{if .}}Query: {{.SearchKey}}, Page: {{.CurrentPage}}, TotalPages: {{.TotalPages}}{{else}}index page{{end}}`
+	tplStr := `{{block "results" .}}{{if .}}{{if .ErrorMsg}}Error: {{.ErrorMsg}}{{else}}Query: {{.SearchKey}}, Page: {{.CurrentPage}}, TotalPages: {{.TotalPages}}{{end}}{{else}}index page{{end}}{{end}}`
 	tpl := template.Must(template.New("index.html").Parse(tplStr))
 	logger := slog.New(slog.DiscardHandler)
 	return NewNewsHandler(client, tpl, logger)

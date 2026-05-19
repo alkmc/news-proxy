@@ -43,6 +43,7 @@ type searchNews struct {
 	CurrentPage int
 	TotalPages  int
 	Results     results
+	ErrorMsg    string
 }
 
 func (s *searchNews) IsLastPage() bool {
