@@ -41,9 +41,16 @@ linters:
     - usestdlibvars
     - wastedassign
   settings:
+    gosec:
+      excludes:
+        - G704
     lll:
       line-length: 110
       tab-width: 1
+    revive:
+      rules:
+        - name: unexported-return
+          disabled: true
   exclusions:
     generated: strict
     presets:

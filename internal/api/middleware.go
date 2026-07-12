@@ -42,7 +42,8 @@ func logMD(logger *slog.Logger) middleware {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
 			defer func() {
-				logger.Info("http request",
+				logger.Info(
+					"http request",
 					slog.String("method", r.Method),
 					slog.String("path", r.URL.Path),
 					slog.Duration("duration", time.Since(start)),
