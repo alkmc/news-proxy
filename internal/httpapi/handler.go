@@ -92,22 +92,29 @@ func (h *Handler) handleFetchError(w http.ResponseWriter, err error) {
 	}
 	h.logger.Error("failed to fetch news", slog.Any("error", err))
 
+	status, msg := classifyFetchError(err)
+	if status == http.StatusServiceUnavailable {
+		w.Header().Set("Retry-After", "60")
+	}
+	h.renderer.Error(w, status, msg)
+}
+
+func classifyFetchError(err error) (int, string) {
 	switch {
 	case errors.Is(err, newsapi.ErrUpstreamTimeout):
-		h.renderer.Error(w, http.StatusGatewayTimeout, "upstream timeout")
+		return http.StatusGatewayTimeout, "upstream timeout"
 	case errors.Is(err, newsapi.ErrUpstreamRateLimit):
-		w.Header().Set("Retry-After", "60")
-		h.renderer.Error(w, http.StatusServiceUnavailable, "rate limit exceeded, try later")
+		return http.StatusServiceUnavailable, "rate limit exceeded, try later"
 	case errors.Is(err, newsapi.ErrUpstreamUnauthorized):
-		h.renderer.Error(w, http.StatusBadGateway, "service misconfigured")
+		return http.StatusBadGateway, "service misconfigured"
 	case errors.Is(err, newsapi.ErrUpstreamBadRequest):
-		h.renderer.Error(w, http.StatusBadRequest, "invalid search query")
+		return http.StatusBadRequest, "invalid search query"
 	case errors.Is(err, newsapi.ErrUpstreamServer),
 		errors.Is(err, newsapi.ErrUpstreamUnavailable),
 		errors.Is(err, newsapi.ErrInvalidResponse):
-		h.renderer.Error(w, http.StatusBadGateway, "upstream unavailable")
+		return http.StatusBadGateway, "upstream unavailable"
 	default:
-		h.renderer.Error(w, http.StatusInternalServerError, "failed to fetch news")
+		return http.StatusInternalServerError, "failed to fetch news"
 	}
 }
 
