@@ -17,8 +17,12 @@ import (
 	"github.com/alkmc/news-proxy/internal/newsapi"
 )
 
-// maxQueryLength caps queries in runes, not bytes.
-const maxQueryLength = 200
+const (
+	// maxQueryLength caps queries in runes, not bytes.
+	maxQueryLength = 200
+	// statusClientClosedRequest is nginx's non-standard 499 for a client that disconnected.
+	statusClientClosedRequest = 499
+)
 
 var bufPool = sync.Pool{
 	New: func() any {
@@ -117,6 +121,8 @@ func (h *NewsHandler) renderError(w http.ResponseWriter, status int, msg string)
 
 func (h *NewsHandler) handleFetchError(w http.ResponseWriter, err error) {
 	if errors.Is(err, context.Canceled) {
+		h.logger.Debug("request canceled", slog.Any("error", err))
+		w.WriteHeader(statusClientClosedRequest)
 		return
 	}
 	h.logger.Error("failed to fetch news", slog.Any("error", err))
