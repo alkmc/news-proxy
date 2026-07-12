@@ -49,7 +49,9 @@
               <time class="published-date">{{ formatDate .PublishedAt }}</time>
             </div>
           </div>
-          <img class="article-image" src="{{ .URLToImage }}" />
+          {{ if .URLToImage }}
+          <img class="article-image" src="{{ .URLToImage }}" alt="" loading="lazy" />
+          {{ end }}
         </li>
         {{ end }}
       </ul>
