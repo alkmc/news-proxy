@@ -7,7 +7,9 @@ type searchPage struct {
 	SearchKey   string
 	CurrentPage int
 	TotalPages  int
-	Results     newsapi.Results
+	// Error, when set, renders instead of results.
+	Error   string
+	Results newsapi.Results
 }
 
 func (s *searchPage) IsLastPage() bool {

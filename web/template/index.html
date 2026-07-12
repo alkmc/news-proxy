@@ -20,6 +20,9 @@
     </header>
     {{ if . }}
     <section class="container">
+      {{ if .Error }}
+      <p class="error-message">{{ .Error }}</p>
+      {{ else }}
       <div class="result-count">
         {{ if (gt .Results.TotalResults 0)}}
         <p>
@@ -57,6 +60,7 @@
         <a href="/search?q={{ .SearchKey }}&page={{ .NextPage }}" class="button next-page">Next</a>
         {{ end }}
       </div>
+      {{ end }}
     </section>
     {{ end }}
   </main>

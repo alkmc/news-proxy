@@ -132,6 +132,12 @@ header {
   margin-bottom: 15px;
 }
 
+.error-message {
+  color: light-dark(#b00020, #cf6679);
+  text-align: center;
+  margin-top: 40px;
+}
+
 .search-results {
   list-style: none;
 }

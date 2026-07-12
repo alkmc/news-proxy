@@ -171,8 +171,8 @@ func TestNewsHandler_Search(t *testing.T) {
 
 // setupTestHandler configures a NewsHandler with a dummy template, silent logger, and 10/100 paging.
 func setupTestHandler(client fetcher) *NewsHandler {
-	tplStr := `{{if .}}Query: {{.SearchKey}}, Page: {{.CurrentPage}}, ` +
-		`TotalPages: {{.TotalPages}}{{else}}index page{{end}}`
+	tplStr := `{{if .}}{{if .Error}}Error: {{.Error}}{{else}}Query: {{.SearchKey}}, ` +
+		`Page: {{.CurrentPage}}, TotalPages: {{.TotalPages}}{{end}}{{else}}index page{{end}}`
 	tpl := template.Must(template.New("index.html").Parse(tplStr))
 	logger := slog.New(slog.DiscardHandler)
 	return NewNewsHandler(client, tpl, logger, 10, 100)
