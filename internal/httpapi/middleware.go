@@ -1,15 +1,11 @@
 package httpapi
 
 import (
-	"cmp"
 	"log/slog"
 	"net/http"
 	"strings"
 	"time"
 )
-
-// middleware wraps an http.Handler.
-type middleware func(http.Handler) http.Handler
 
 const (
 	// staticCachePolicy is the Cache-Control value for static assets (24h).
@@ -48,8 +44,7 @@ func staticCache(next http.Handler) http.Handler {
 }
 
 // logMD logs request metadata: method, path, and duration.
-func logMD(logger *slog.Logger) middleware {
-	logger = cmp.Or(logger, slog.Default())
+func logMD(logger *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
