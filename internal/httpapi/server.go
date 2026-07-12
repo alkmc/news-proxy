@@ -5,21 +5,22 @@ import (
 	"time"
 )
 
-const (
-	readTimeout       = 7 * time.Second   // max time to read request from the client
-	readHeaderTimeout = 5 * time.Second   // max time to read request headers
-	writeTimeout      = 10 * time.Second  // max time to write response to the client
-	idleTimeout       = 120 * time.Second // max time for connections using TCP Keep-Alive
-)
+// ServerTimeouts holds HTTP server timeout values.
+type ServerTimeouts struct {
+	Read       time.Duration
+	ReadHeader time.Duration
+	Write      time.Duration
+	Idle       time.Duration
+}
 
-// NewServer returns an http.Server with predefined timeouts.
-func NewServer(addr string, handler http.Handler) *http.Server {
+// NewServer builds the HTTP server.
+func NewServer(addr string, handler http.Handler, timeouts ServerTimeouts) *http.Server {
 	return &http.Server{
 		Addr:              addr,
 		Handler:           handler,
-		ReadTimeout:       readTimeout,
-		ReadHeaderTimeout: readHeaderTimeout,
-		WriteTimeout:      writeTimeout,
-		IdleTimeout:       idleTimeout,
+		ReadTimeout:       timeouts.Read,
+		ReadHeaderTimeout: timeouts.ReadHeader,
+		WriteTimeout:      timeouts.Write,
+		IdleTimeout:       timeouts.Idle,
 	}
 }

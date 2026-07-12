@@ -26,7 +26,7 @@ func main() {
 }
 
 func run(logger *slog.Logger) error {
-	apiKey, err := config.APIKey()
+	cfg, err := config.Load()
 	if err != nil {
 		return err
 	}
@@ -36,20 +36,25 @@ func run(logger *slog.Logger) error {
 	}
 
 	client, err := newsapi.NewClient(newsapi.Config{
-		BaseURL:  config.BaseURL,
-		APIKey:   apiKey,
-		PageSize: config.PageSize,
-		Timeout:  config.FetchTimeout,
+		BaseURL:  cfg.NewsAPI.BaseURL,
+		APIKey:   cfg.NewsAPI.APIKey,
+		PageSize: cfg.NewsAPI.PageSize,
+		Timeout:  cfg.NewsAPI.FetchTimeout,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create news client: %w", err)
 	}
 
-	h := httpapi.NewNewsHandler(client, tpl, logger, config.PageSize, config.MaxResults)
+	h := httpapi.NewNewsHandler(client, tpl, logger, cfg.NewsAPI.PageSize, cfg.NewsAPI.MaxResults)
 	mux := httpapi.NewMux(h)
 
-	addr := config.ListenAddr()
-	srv := httpapi.NewServer(addr, mux)
+	addr := cfg.Server.Address()
+	srv := httpapi.NewServer(addr, mux, httpapi.ServerTimeouts{
+		Read:       cfg.Server.ReadTimeout,
+		ReadHeader: cfg.Server.ReadHeaderTimeout,
+		Write:      cfg.Server.WriteTimeout,
+		Idle:       cfg.Server.IdleTimeout,
+	})
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -69,7 +74,7 @@ func run(logger *slog.Logger) error {
 		logger.Info("signal closing server received")
 		shutdownCtx, cancel := context.WithTimeout(
 			context.WithoutCancel(ctx),
-			config.ShutdownTimeout,
+			cfg.Server.ShutdownTimeout,
 		)
 		defer cancel()
 		if err := srv.Shutdown(shutdownCtx); err != nil {
