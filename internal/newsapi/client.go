@@ -1,4 +1,4 @@
-package api
+package newsapi
 
 import (
 	"cmp"
@@ -18,19 +18,17 @@ type Client struct {
 	baseParsedURL *url.URL
 	apiKey        string
 	pageSize      int
-	maxResults    int
 	httpClient    *http.Client
 	logger        *slog.Logger
 }
 
 // Config configures the API Client.
 type Config struct {
-	BaseURL    string
-	APIKey     string
-	PageSize   int
-	MaxResults int
-	Timeout    time.Duration
-	Logger     *slog.Logger
+	BaseURL  string
+	APIKey   string
+	PageSize int
+	Timeout  time.Duration
+	Logger   *slog.Logger
 }
 
 // NewClient parses the base URL and returns a configured Client.
@@ -44,32 +42,21 @@ func NewClient(cfg Config) (*Client, error) {
 		baseParsedURL: base,
 		apiKey:        cfg.APIKey,
 		pageSize:      cfg.PageSize,
-		maxResults:    cfg.MaxResults,
-		httpClient:    &http.Client{Timeout: cfg.Timeout, Transport: customTransport()},
+		httpClient:    &http.Client{Timeout: cfg.Timeout, Transport: newTransport()},
 		logger:        cmp.Or(cfg.Logger, slog.Default()),
 	}, nil
 }
 
 // Fetch returns articles for a query, wrapping upstream failures in sentinel errors.
-func (c *Client) Fetch(ctx context.Context, searchKey string, page int) (*results, error) {
+func (c *Client) Fetch(ctx context.Context, searchKey string, page int) (*Results, error) {
 	endpoint := c.endpoint(searchKey, page)
 
-	var res results
+	var res Results
 	if err := c.fetch(ctx, endpoint, &res); err != nil {
 		return nil, fmt.Errorf("fetch failed: %w", err)
 	}
 
 	return &res, nil
-}
-
-// GetPageSize returns the configured page size.
-func (c *Client) GetPageSize() int {
-	return c.pageSize
-}
-
-// GetMaxResults returns the configured cap on total results.
-func (c *Client) GetMaxResults() int {
-	return c.maxResults
 }
 
 func (c *Client) endpoint(searchKey string, page int) string {
@@ -87,7 +74,7 @@ func (c *Client) endpoint(searchKey string, page int) string {
 	return u.String()
 }
 
-func (c *Client) fetch(ctx context.Context, endpoint string, res *results) error {
+func (c *Client) fetch(ctx context.Context, endpoint string, res *Results) error {
 	req, err := c.newRequest(ctx, endpoint)
 	if err != nil {
 		return err
@@ -122,11 +109,11 @@ func classifyTransportError(err error) error {
 func decodeUpstreamError(resp *http.Response) error {
 	sentinel := classifyStatus(resp.StatusCode)
 
-	var newsErr newsAPIError
-	if err := json.NewDecoder(resp.Body).Decode(&newsErr); err != nil {
+	var apiErr apiError
+	if err := json.NewDecoder(resp.Body).Decode(&apiErr); err != nil {
 		return fmt.Errorf("%w: status %d: failed to decode body: %w", sentinel, resp.StatusCode, err)
 	}
-	return fmt.Errorf("%w: status %d: %s", sentinel, resp.StatusCode, newsErr.Message)
+	return fmt.Errorf("%w: status %d: %s", sentinel, resp.StatusCode, apiErr.Message)
 }
 
 func classifyStatus(status int) error {
@@ -154,7 +141,7 @@ func (c *Client) newRequest(ctx context.Context, endpoint string) (*http.Request
 	return req, nil
 }
 
-func customTransport() *http.Transport {
+func newTransport() *http.Transport {
 	base, ok := http.DefaultTransport.(*http.Transport)
 	if !ok {
 		return &http.Transport{}

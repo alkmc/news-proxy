@@ -1,4 +1,4 @@
-package api
+package newsapi
 
 import (
 	"errors"
@@ -19,7 +19,7 @@ func TestClient_Fetch(t *testing.T) {
 		wantErr      bool
 		errContains  string
 		wantSentinel error
-		validateResp func(t *testing.T, res *results)
+		validateResp func(t *testing.T, res *Results)
 	}{
 		{
 			name:       "success",
@@ -35,7 +35,7 @@ func TestClient_Fetch(t *testing.T) {
 				]
 			}`,
 			wantErr: false,
-			validateResp: func(t *testing.T, res *results) {
+			validateResp: func(t *testing.T, res *Results) {
 				if res.Status != "ok" {
 					t.Errorf("expected status 'ok', got %q", res.Status)
 				}
@@ -99,11 +99,10 @@ func TestClient_Fetch(t *testing.T) {
 			defer ts.Close()
 
 			client, err := NewClient(Config{
-				BaseURL:    ts.URL,
-				APIKey:     "test-key",
-				PageSize:   10,
-				MaxResults: 50,
-				Timeout:    1 * time.Second,
+				BaseURL:  ts.URL,
+				APIKey:   "test-key",
+				PageSize: 10,
+				Timeout:  1 * time.Second,
 			})
 			if err != nil {
 				t.Fatalf("unexpected error creating client: %v", err)
