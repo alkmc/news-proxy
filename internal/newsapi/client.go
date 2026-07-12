@@ -33,6 +33,9 @@ func NewClient(cfg Config) (*Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse base URL: %w", err)
 	}
+	if base.Scheme == "" || base.Host == "" {
+		return nil, fmt.Errorf("base URL must be absolute, got %q", cfg.BaseURL)
+	}
 
 	return &Client{
 		baseParsedURL: base,
