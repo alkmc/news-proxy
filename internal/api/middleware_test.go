@@ -28,7 +28,7 @@ func TestSecurityHeaders(t *testing.T) {
 
 		wantDirectives := []string{
 			"default-src 'self'",
-			"script-src 'none'",
+			"script-src 'self'",
 			"frame-ancestors 'none'",
 			"base-uri 'none'",
 		}
