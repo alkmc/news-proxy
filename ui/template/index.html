@@ -9,15 +9,18 @@
 </head>
 
 <body>
-  <main>
+  <main hx-target:inherited="#results" hx-push-url:inherited="true" hx-indicator:inherited="#loading">
     <header>
       <a class="logo" href="/">News Demo</a>
-      <form action="/search" method="GET">
+      <form action="/search" method="GET" hx-get="/search">
         <input autofocus class="search-input" value="{{ if . }}{{ .SearchKey }}{{ end }}"
           placeholder="Enter a news topic" type="search" name="q" />
       </form>
       <button id="theme-toggle" class="theme-toggle" aria-label="Toggle colour scheme">🌙</button>
     </header>
+    <div id="loading" class="htmx-indicator">Loading...</div>
+    <div id="results">
+    {{ block "results" . }}
     {{ if . }}
     <section class="container">
       {{ if .Error }}
@@ -55,17 +58,22 @@
         </li>
         {{ end }}
       </ul>
-      <div class="pagination">
+      <div class="pagination" hx-swap:inherited="show:top">
         {{ if (gt .CurrentPage 1) }}
-        <a href="/search?q={{ .SearchKey }}&page={{ .PreviousPage }}" class="button previous-page">Previous</a>
+        <a href="/search?q={{ .SearchKey }}&page={{ .PreviousPage }}" class="button previous-page"
+          hx-get="/search?q={{ .SearchKey }}&page={{ .PreviousPage }}">Previous</a>
         {{ end }} {{ if (ne .IsLastPage true) }}
-        <a href="/search?q={{ .SearchKey }}&page={{ .NextPage }}" class="button next-page">Next</a>
+        <a href="/search?q={{ .SearchKey }}&page={{ .NextPage }}" class="button next-page"
+          hx-get="/search?q={{ .SearchKey }}&page={{ .NextPage }}">Next</a>
         {{ end }}
       </div>
       {{ end }}
     </section>
     {{ end }}
+    {{ end }}
+    </div>
   </main>
+  <script src="/static/htmx.min.js?v=4.0.0-beta5" defer></script>
   <script src="/static/theme.js" type="module"></script>
 </body>
 

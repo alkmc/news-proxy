@@ -12,6 +12,9 @@ import (
 	"time"
 )
 
+// resultsBlock is the template block swapped into the page on htmx requests.
+const resultsBlock = "results"
+
 var bufPool = sync.Pool{
 	New: func() any {
 		return new(bytes.Buffer)
@@ -37,7 +40,8 @@ func ParseTemplate(fsys fs.FS) (*template.Template, error) {
 }
 
 // Render buffers the page for data and writes it with the given status.
-func (v *Renderer) Render(w http.ResponseWriter, status int, data *SearchPage) {
+// Partial renders only the results block.
+func (v *Renderer) Render(w http.ResponseWriter, status int, data *SearchPage, partial bool) {
 	buf, ok := bufPool.Get().(*bytes.Buffer)
 	if !ok {
 		buf = new(bytes.Buffer)
@@ -47,7 +51,11 @@ func (v *Renderer) Render(w http.ResponseWriter, status int, data *SearchPage) {
 		bufPool.Put(buf)
 	}()
 
-	if err := v.tpl.Execute(buf, data); err != nil {
+	name := v.tpl.Name()
+	if partial {
+		name = resultsBlock
+	}
+	if err := v.tpl.ExecuteTemplate(buf, name, data); err != nil {
 		v.logger.Error("template execution error", slog.Any("error", err))
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
@@ -64,8 +72,8 @@ func (v *Renderer) Render(w http.ResponseWriter, status int, data *SearchPage) {
 }
 
 // Error renders the page with an error message so failures stay styled HTML.
-func (v *Renderer) Error(w http.ResponseWriter, status int, msg string) {
-	v.Render(w, status, &SearchPage{Error: msg})
+func (v *Renderer) Error(w http.ResponseWriter, status int, msg string, partial bool) {
+	v.Render(w, status, &SearchPage{Error: msg}, partial)
 }
 
 // formatDate renders a timestamp as "Month D, YYYY", empty for missing dates.

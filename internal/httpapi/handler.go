@@ -49,8 +49,8 @@ func NewHandler(
 }
 
 // Index renders the empty search page.
-func (h *Handler) Index(w http.ResponseWriter, _ *http.Request) {
-	h.renderer.Render(w, http.StatusOK, nil)
+func (h *Handler) Index(w http.ResponseWriter, r *http.Request) {
+	h.renderer.Render(w, http.StatusOK, nil, isHTMX(r))
 }
 
 // ping reports service health for container healthchecks.
@@ -61,16 +61,17 @@ func ping(w http.ResponseWriter, _ *http.Request) {
 // Search validates query parameters, fetches articles from NewsAPI, and renders the results page.
 func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 	maxAllowedPages := countPages(h.maxResults, h.pageSize)
+	partial := isHTMX(r)
 
 	query, page, err := parseSearchParams(r, maxAllowedPages)
 	if err != nil {
-		h.renderer.Error(w, http.StatusBadRequest, err.Error())
+		h.renderer.Error(w, http.StatusBadRequest, err.Error(), partial)
 		return
 	}
 
 	results, err := h.client.Fetch(r.Context(), query, page)
 	if err != nil {
-		h.handleFetchError(w, err)
+		h.handleFetchError(w, err, partial)
 		return
 	}
 
@@ -81,10 +82,10 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 		TotalPages:  countPages(min(results.TotalResults, h.maxResults), h.pageSize),
 	}
 
-	h.renderer.Render(w, http.StatusOK, s)
+	h.renderer.Render(w, http.StatusOK, s, partial)
 }
 
-func (h *Handler) handleFetchError(w http.ResponseWriter, err error) {
+func (h *Handler) handleFetchError(w http.ResponseWriter, err error, partial bool) {
 	if errors.Is(err, context.Canceled) {
 		h.logger.Debug("request canceled", slog.Any("error", err))
 		w.WriteHeader(statusClientClosedRequest)
@@ -96,7 +97,13 @@ func (h *Handler) handleFetchError(w http.ResponseWriter, err error) {
 	if status == http.StatusServiceUnavailable {
 		w.Header().Set("Retry-After", "60")
 	}
-	h.renderer.Error(w, status, msg)
+	h.renderer.Error(w, status, msg, partial)
+}
+
+// isHTMX reports whether the request expects an htmx partial swap rather than a full page.
+// History restores arrive as "full" and plain browser requests carry no header at all.
+func isHTMX(r *http.Request) bool {
+	return r.Header.Get("Hx-Request-Type") == "partial"
 }
 
 func classifyFetchError(err error) (int, string) {

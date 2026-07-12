@@ -40,8 +40,10 @@ func TestHandler_Search(t *testing.T) {
 		name           string
 		targetURL      string
 		mockClient     *mockNewsClient
+		headers        map[string]string
 		expectedStatus int
 		bodyContains   string
+		bodyExcludes   string
 	}{
 		{
 			name:      "success with valid query",
@@ -148,6 +150,40 @@ func TestHandler_Search(t *testing.T) {
 			expectedStatus: http.StatusInternalServerError,
 			bodyContains:   "failed to fetch news",
 		},
+		{
+			name:      "htmx request renders only the results block",
+			targetURL: "/search?q=golang",
+			mockClient: &mockNewsClient{
+				mockFetchFn: mockFetchResponse(5),
+			},
+			headers:        map[string]string{"Hx-Request": "true", "Hx-Request-Type": "partial"},
+			expectedStatus: http.StatusOK,
+			bodyContains:   "Query: golang, Page: 1, TotalPages: 1",
+			bodyExcludes:   "<page>",
+		},
+		{
+			name:           "htmx validation error renders only the results block",
+			targetURL:      "/search?q=",
+			mockClient:     &mockNewsClient{},
+			headers:        map[string]string{"Hx-Request": "true", "Hx-Request-Type": "partial"},
+			expectedStatus: http.StatusBadRequest,
+			bodyContains:   "query is required",
+			bodyExcludes:   "<page>",
+		},
+		{
+			name:      "htmx history restore renders the full page",
+			targetURL: "/search?q=golang",
+			mockClient: &mockNewsClient{
+				mockFetchFn: mockFetchResponse(5),
+			},
+			headers: map[string]string{
+				"Hx-Request":                 "true",
+				"Hx-Request-Type":            "full",
+				"Hx-History-Restore-Request": "true",
+			},
+			expectedStatus: http.StatusOK,
+			bodyContains:   "<page>",
+		},
 	}
 
 	for _, tc := range tests {
@@ -156,6 +192,9 @@ func TestHandler_Search(t *testing.T) {
 
 			h := setupTestHandler(tc.mockClient)
 			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, tc.targetURL, nil)
+			for key, value := range tc.headers {
+				req.Header.Set(key, value)
+			}
 			rr := httptest.NewRecorder()
 
 			h.Search(rr, req)
@@ -166,14 +205,17 @@ func TestHandler_Search(t *testing.T) {
 			if tc.bodyContains != "" && !strings.Contains(rr.Body.String(), tc.bodyContains) {
 				t.Errorf("expected body to contain %q, got %q", tc.bodyContains, rr.Body.String())
 			}
+			if tc.bodyExcludes != "" && strings.Contains(rr.Body.String(), tc.bodyExcludes) {
+				t.Errorf("expected body to not contain %q, got %q", tc.bodyExcludes, rr.Body.String())
+			}
 		})
 	}
 }
 
 // setupTestHandler configures a Handler with a dummy template, silent logger, and 10/100 paging.
 func setupTestHandler(client fetcher) *Handler {
-	tplStr := `{{if .}}{{if .Error}}Error: {{.Error}}{{else}}Query: {{.SearchKey}}, ` +
-		`Page: {{.CurrentPage}}, TotalPages: {{.TotalPages}}{{end}}{{else}}index page{{end}}`
+	tplStr := `<page>{{block "results" .}}{{if .}}{{if .Error}}Error: {{.Error}}{{else}}Query: {{.SearchKey}}` +
+		`, Page: {{.CurrentPage}}, TotalPages: {{.TotalPages}}{{end}}{{else}}index page{{end}}{{end}}</page>`
 	tpl := template.Must(template.New("index.html").Parse(tplStr))
 	logger := slog.New(slog.DiscardHandler)
 	return NewHandler(client, view.NewRenderer(tpl, logger), logger, 10, 100)

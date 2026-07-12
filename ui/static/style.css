@@ -190,6 +190,12 @@ header {
   }
 }
 
+/* layout only: htmx injects show/hide indicator styles via a constructable stylesheet */
+.htmx-indicator {
+  text-align: center;
+  margin-top: 20px;
+}
+
 @media screen and (max-width: 550px) {
   header {
     flex-direction: column;
