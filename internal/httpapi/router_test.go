@@ -78,6 +78,16 @@ func TestRouter(t *testing.T) {
 			client:     &mockNewsClient{},
 			wantStatus: http.StatusNotFound,
 		},
+		{
+			name: "handler panic recovered as 500",
+			path: "/search?q=golang",
+			client: &mockNewsClient{
+				mockFetchFn: func(context.Context, string, int) (*newsapi.Results, error) {
+					panic("boom")
+				},
+			},
+			wantStatus: http.StatusInternalServerError,
+		},
 	}
 
 	for _, tc := range tests {

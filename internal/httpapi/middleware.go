@@ -3,6 +3,7 @@ package httpapi
 import (
 	"log/slog"
 	"net/http"
+	"runtime/debug"
 	"strings"
 	"time"
 )
@@ -53,6 +54,24 @@ func noDirListing(next http.Handler) http.Handler {
 func staticCache(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", staticCachePolicy)
+		next.ServeHTTP(w, r)
+	})
+}
+
+// recoverPanic turns handler panics into a clean 500 instead of a dropped connection.
+func recoverPanic(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if rec := recover(); rec != nil {
+				w.Header().Set("Connection", "close")
+				slog.Error(
+					"panic recovered",
+					slog.Any("error", rec),
+					slog.String("stack", string(debug.Stack())),
+				)
+				http.Error(w, "internal server error", http.StatusInternalServerError)
+			}
+		}()
 		next.ServeHTTP(w, r)
 	})
 }

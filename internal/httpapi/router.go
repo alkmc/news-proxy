@@ -12,5 +12,5 @@ func NewMux(h *NewsHandler) http.Handler {
 	mux.Handle("GET /static/", staticCache(noDirListing(http.FileServerFS(web.StaticFS))))
 	mux.HandleFunc("GET /search", h.Search)
 	mux.HandleFunc("GET /{$}", h.Index)
-	return logMD(h.logger)(securityHeaders(mux))
+	return logMD(h.logger)(recoverPanic(securityHeaders(mux)))
 }
