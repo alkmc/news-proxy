@@ -16,6 +16,20 @@ const (
 		"form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
 )
 
+type statusRecorder struct {
+	http.ResponseWriter
+	status int
+}
+
+func (r *statusRecorder) WriteHeader(code int) {
+	r.status = code
+	r.ResponseWriter.WriteHeader(code)
+}
+
+func (r *statusRecorder) Unwrap() http.ResponseWriter {
+	return r.ResponseWriter
+}
+
 func securityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h := w.Header()
@@ -43,20 +57,22 @@ func staticCache(next http.Handler) http.Handler {
 	})
 }
 
-// logMD logs request metadata: method, path, and duration.
+// logMD logs request metadata: method, path, status, and duration.
 func logMD(logger *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
+			rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 			defer func() {
 				logger.Info(
 					"http request",
 					slog.String("method", r.Method),
 					slog.String("path", r.URL.Path),
+					slog.Int("status", rec.status),
 					slog.Duration("duration", time.Since(start)),
 				)
 			}()
-			next.ServeHTTP(w, r)
+			next.ServeHTTP(rec, r)
 		})
 	}
 }
