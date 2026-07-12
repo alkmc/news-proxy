@@ -1,12 +1,10 @@
 package newsapi
 
 import (
-	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -19,7 +17,6 @@ type Client struct {
 	apiKey        string
 	pageSize      int
 	httpClient    *http.Client
-	logger        *slog.Logger
 }
 
 // Config configures the API Client.
@@ -28,7 +25,6 @@ type Config struct {
 	APIKey   string
 	PageSize int
 	Timeout  time.Duration
-	Logger   *slog.Logger
 }
 
 // NewClient parses the base URL and returns a configured Client.
@@ -43,7 +39,6 @@ func NewClient(cfg Config) (*Client, error) {
 		apiKey:        cfg.APIKey,
 		pageSize:      cfg.PageSize,
 		httpClient:    &http.Client{Timeout: cfg.Timeout, Transport: newTransport()},
-		logger:        cmp.Or(cfg.Logger, slog.Default()),
 	}, nil
 }
 

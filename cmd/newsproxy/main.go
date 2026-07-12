@@ -40,7 +40,6 @@ func run(logger *slog.Logger) error {
 		APIKey:   apiKey,
 		PageSize: config.PageSize,
 		Timeout:  config.FetchTimeout,
-		Logger:   logger,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create news client: %w", err)
