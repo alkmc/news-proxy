@@ -51,12 +51,7 @@ func run(logger *slog.Logger) error {
 	addr := config.ListenAddr()
 	srv := httpapi.NewServer(addr, mux)
 
-	ctx, stop := signal.NotifyContext(
-		context.Background(),
-		os.Interrupt,
-		syscall.SIGINT,
-		syscall.SIGTERM,
-	)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	serverErr := make(chan error, 1)

@@ -1,7 +1,6 @@
 package httpapi
 
 import (
-	"fmt"
 	"html/template"
 	"io/fs"
 	"time"
@@ -16,6 +15,5 @@ func ParseTemplate(fsys fs.FS) (*template.Template, error) {
 
 // formatDate renders a timestamp as "Month D, YYYY".
 func formatDate(t time.Time) string {
-	year, month, day := t.Date()
-	return fmt.Sprintf("%v %d, %d", month, day, year)
+	return t.Format("January 2, 2006")
 }
