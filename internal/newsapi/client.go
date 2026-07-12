@@ -96,6 +96,9 @@ func (c *Client) fetch(ctx context.Context, endpoint string, res *Results) error
 	if err := json.NewDecoder(body).Decode(res); err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalidResponse, err)
 	}
+	if res.Status != "ok" {
+		return fmt.Errorf("%w: status %q", ErrInvalidResponse, res.Status)
+	}
 
 	return nil
 }
