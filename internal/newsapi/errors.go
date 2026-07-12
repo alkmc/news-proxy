@@ -11,7 +11,7 @@ var (
 	ErrUpstreamRateLimit = errors.New("upstream rate limit exceeded")
 	// ErrUpstreamUnauthorized signals NewsAPI returned 401 or 403 (likely bad API key).
 	ErrUpstreamUnauthorized = errors.New("upstream unauthorized")
-	// ErrUpstreamBadRequest signals NewsAPI returned HTTP 400.
+	// ErrUpstreamBadRequest signals NewsAPI rejected the request with a 4xx response.
 	ErrUpstreamBadRequest = errors.New("upstream rejected request")
 	// ErrUpstreamServer signals NewsAPI returned a 5xx response.
 	ErrUpstreamServer = errors.New("upstream server error")

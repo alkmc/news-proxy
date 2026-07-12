@@ -128,10 +128,8 @@ func classifyStatus(status int) error {
 		return ErrUpstreamUnauthorized
 	case status == http.StatusTooManyRequests:
 		return ErrUpstreamRateLimit
-	case status == http.StatusBadRequest:
+	case status >= 400 && status < 500:
 		return ErrUpstreamBadRequest
-	case status >= 500:
-		return ErrUpstreamServer
 	default:
 		return ErrUpstreamServer
 	}
