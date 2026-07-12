@@ -190,6 +190,21 @@ header {
   }
 }
 
+/* htmx indicator styled here because CSP blocks the inline styles htmx injects */
+.htmx-indicator {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 200ms ease-in;
+  text-align: center;
+  margin-top: 20px;
+}
+
+.htmx-request .htmx-indicator,
+.htmx-request.htmx-indicator {
+  opacity: 1;
+  visibility: visible;
+}
+
 @media screen and (max-width: 550px) {
   header {
     flex-direction: column;

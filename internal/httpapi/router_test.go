@@ -119,6 +119,37 @@ func TestRouter(t *testing.T) {
 	}
 }
 
+func TestRouter_HTMXPartial(t *testing.T) {
+	t.Parallel()
+
+	ts := newTestServer(t, &mockNewsClient{mockFetchFn: mockFetchResponse(5)})
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, ts.URL+"/search?q=golang", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Hx-Request", "true")
+	resp, err := ts.Client().Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("expected status 200 OK, got %d", resp.StatusCode)
+	}
+	if !strings.Contains(string(body), "Test Article") {
+		t.Errorf("expected partial to contain articles, got:\n%s", body)
+	}
+	if strings.Contains(string(body), "<!DOCTYPE html>") {
+		t.Errorf("expected results block without full page, got:\n%s", body)
+	}
+}
+
 // newTestServer starts the full router with the real template and a mock client.
 func newTestServer(t *testing.T, client fetcher) *httptest.Server {
 	t.Helper()
