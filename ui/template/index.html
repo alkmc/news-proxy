@@ -6,16 +6,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>News App Demo</title>
   <link rel="stylesheet" href="/static/style.css" />
-  <meta name="htmx-config"
-    content='{"includeIndicatorStyles":false,"responseHandling":[{"code":"204","swap":false},{"code":".*","swap":true}]}'>
 </head>
 
 <body>
-  <main>
+  <main hx-target:inherited="#results" hx-push-url:inherited="true" hx-indicator:inherited="#loading">
     <header>
       <a class="logo" href="/">News Demo</a>
-      <form action="/search" method="GET" hx-get="/search" hx-target="#results" hx-push-url="true"
-        hx-indicator="#loading">
+      <form action="/search" method="GET" hx-get="/search">
         <input autofocus class="search-input" value="{{ if . }}{{ .SearchKey }}{{ end }}"
           placeholder="Enter a news topic" type="search" name="q" />
       </form>
@@ -61,15 +58,13 @@
         </li>
         {{ end }}
       </ul>
-      <div class="pagination">
+      <div class="pagination" hx-swap:inherited="show:top">
         {{ if (gt .CurrentPage 1) }}
         <a href="/search?q={{ .SearchKey }}&page={{ .PreviousPage }}" class="button previous-page"
-          hx-get="/search?q={{ .SearchKey }}&page={{ .PreviousPage }}" hx-target="#results" hx-push-url="true"
-          hx-swap="innerHTML show:top" hx-indicator="#loading">Previous</a>
+          hx-get="/search?q={{ .SearchKey }}&page={{ .PreviousPage }}">Previous</a>
         {{ end }} {{ if (ne .IsLastPage true) }}
         <a href="/search?q={{ .SearchKey }}&page={{ .NextPage }}" class="button next-page"
-          hx-get="/search?q={{ .SearchKey }}&page={{ .NextPage }}" hx-target="#results" hx-push-url="true"
-          hx-swap="innerHTML show:top" hx-indicator="#loading">Next</a>
+          hx-get="/search?q={{ .SearchKey }}&page={{ .NextPage }}">Next</a>
         {{ end }}
       </div>
       {{ end }}

@@ -129,6 +129,7 @@ func TestRouter_HTMXPartial(t *testing.T) {
 		t.Fatal(err)
 	}
 	req.Header.Set("Hx-Request", "true")
+	req.Header.Set("Hx-Request-Type", "partial")
 	resp, err := ts.Client().Do(req)
 	if err != nil {
 		t.Fatal(err)

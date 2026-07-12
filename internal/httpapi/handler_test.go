@@ -156,7 +156,7 @@ func TestHandler_Search(t *testing.T) {
 			mockClient: &mockNewsClient{
 				mockFetchFn: mockFetchResponse(5),
 			},
-			headers:        map[string]string{"Hx-Request": "true"},
+			headers:        map[string]string{"Hx-Request": "true", "Hx-Request-Type": "partial"},
 			expectedStatus: http.StatusOK,
 			bodyContains:   "Query: golang, Page: 1, TotalPages: 1",
 			bodyExcludes:   "<page>",
@@ -165,7 +165,7 @@ func TestHandler_Search(t *testing.T) {
 			name:           "htmx validation error renders only the results block",
 			targetURL:      "/search?q=",
 			mockClient:     &mockNewsClient{},
-			headers:        map[string]string{"Hx-Request": "true"},
+			headers:        map[string]string{"Hx-Request": "true", "Hx-Request-Type": "partial"},
 			expectedStatus: http.StatusBadRequest,
 			bodyContains:   "query is required",
 			bodyExcludes:   "<page>",
@@ -178,6 +178,7 @@ func TestHandler_Search(t *testing.T) {
 			},
 			headers: map[string]string{
 				"Hx-Request":                 "true",
+				"Hx-Request-Type":            "full",
 				"Hx-History-Restore-Request": "true",
 			},
 			expectedStatus: http.StatusOK,

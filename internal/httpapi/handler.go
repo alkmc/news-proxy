@@ -101,8 +101,9 @@ func (h *Handler) handleFetchError(w http.ResponseWriter, err error, partial boo
 }
 
 // isHTMX reports whether the request expects an htmx partial swap rather than a full page.
+// History restores arrive as "full" and plain browser requests carry no header at all.
 func isHTMX(r *http.Request) bool {
-	return r.Header.Get("Hx-Request") == "true" && r.Header.Get("Hx-History-Restore-Request") != "true"
+	return r.Header.Get("Hx-Request-Type") == "partial"
 }
 
 func classifyFetchError(err error) (int, string) {
