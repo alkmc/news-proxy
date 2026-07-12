@@ -47,7 +47,7 @@ func run(logger *slog.Logger) error {
 	}
 
 	renderer := view.NewRenderer(tpl, logger)
-	h := httpapi.NewNewsHandler(client, renderer, logger, cfg.NewsAPI.PageSize, cfg.NewsAPI.MaxResults)
+	h := httpapi.NewHandler(client, renderer, logger, cfg.NewsAPI.PageSize, cfg.NewsAPI.MaxResults)
 	mux := httpapi.NewMux(h)
 
 	addr := cfg.Server.Address()

@@ -16,7 +16,7 @@ import (
 	"github.com/alkmc/news-proxy/internal/view"
 )
 
-func TestNewsHandler_Index(t *testing.T) {
+func TestHandler_Index(t *testing.T) {
 	t.Parallel()
 
 	h := setupTestHandler(&mockNewsClient{})
@@ -33,7 +33,7 @@ func TestNewsHandler_Index(t *testing.T) {
 	}
 }
 
-func TestNewsHandler_Search(t *testing.T) {
+func TestHandler_Search(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -170,13 +170,13 @@ func TestNewsHandler_Search(t *testing.T) {
 	}
 }
 
-// setupTestHandler configures a NewsHandler with a dummy template, silent logger, and 10/100 paging.
-func setupTestHandler(client fetcher) *NewsHandler {
+// setupTestHandler configures a Handler with a dummy template, silent logger, and 10/100 paging.
+func setupTestHandler(client fetcher) *Handler {
 	tplStr := `{{if .}}{{if .Error}}Error: {{.Error}}{{else}}Query: {{.SearchKey}}, ` +
 		`Page: {{.CurrentPage}}, TotalPages: {{.TotalPages}}{{end}}{{else}}index page{{end}}`
 	tpl := template.Must(template.New("index.html").Parse(tplStr))
 	logger := slog.New(slog.DiscardHandler)
-	return NewNewsHandler(client, view.NewRenderer(tpl, logger), logger, 10, 100)
+	return NewHandler(client, view.NewRenderer(tpl, logger), logger, 10, 100)
 }
 
 func mockFetchResponse(totalResults int) func(context.Context, string, int) (*newsapi.Results, error) {

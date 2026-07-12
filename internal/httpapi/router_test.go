@@ -122,7 +122,7 @@ func newTestServer(t *testing.T, client fetcher) *httptest.Server {
 		t.Fatal(err)
 	}
 	logger := slog.New(slog.DiscardHandler)
-	h := NewNewsHandler(client, view.NewRenderer(tpl, logger), logger, 10, 100)
+	h := NewHandler(client, view.NewRenderer(tpl, logger), logger, 10, 100)
 	ts := httptest.NewServer(NewMux(h))
 	t.Cleanup(ts.Close)
 	return ts

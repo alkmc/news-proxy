@@ -7,7 +7,7 @@ import (
 )
 
 // NewMux builds the application router, configuring routes and applying middlewares.
-func NewMux(h *NewsHandler) http.Handler {
+func NewMux(h *Handler) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("GET /static/", staticCache(noDirListing(http.FileServerFS(ui.StaticFS))))
 	mux.HandleFunc("GET /search", h.Search)

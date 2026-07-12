@@ -25,8 +25,8 @@ type (
 	fetcher interface {
 		Fetch(context.Context, string, int) (*newsapi.Results, error)
 	}
-	// NewsHandler renders the index page and serves search results.
-	NewsHandler struct {
+	// Handler renders the index page and serves search results.
+	Handler struct {
 		client     fetcher
 		renderer   *view.Renderer
 		logger     *slog.Logger
@@ -35,11 +35,11 @@ type (
 	}
 )
 
-// NewNewsHandler builds a NewsHandler with the given client, renderer, logger, and paging limits.
-func NewNewsHandler(
+// NewHandler builds a Handler with the given client, renderer, logger, and paging limits.
+func NewHandler(
 	client fetcher, v *view.Renderer, logger *slog.Logger, pageSize, maxResults int,
-) *NewsHandler {
-	return &NewsHandler{
+) *Handler {
+	return &Handler{
 		client:     client,
 		renderer:   v,
 		logger:     logger,
@@ -49,12 +49,12 @@ func NewNewsHandler(
 }
 
 // Index renders the empty search page.
-func (h *NewsHandler) Index(w http.ResponseWriter, _ *http.Request) {
+func (h *Handler) Index(w http.ResponseWriter, _ *http.Request) {
 	h.renderer.Render(w, http.StatusOK, nil)
 }
 
 // Search validates query parameters, fetches articles from NewsAPI, and renders the results page.
-func (h *NewsHandler) Search(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 	maxAllowedPages := countPages(h.maxResults, h.pageSize)
 
 	query, page, err := parseSearchParams(r, maxAllowedPages)
@@ -79,7 +79,7 @@ func (h *NewsHandler) Search(w http.ResponseWriter, r *http.Request) {
 	h.renderer.Render(w, http.StatusOK, s)
 }
 
-func (h *NewsHandler) handleFetchError(w http.ResponseWriter, err error) {
+func (h *Handler) handleFetchError(w http.ResponseWriter, err error) {
 	if errors.Is(err, context.Canceled) {
 		h.logger.Debug("request canceled", slog.Any("error", err))
 		w.WriteHeader(statusClientClosedRequest)
@@ -106,14 +106,14 @@ func (h *NewsHandler) handleFetchError(w http.ResponseWriter, err error) {
 	}
 }
 
-func parseSearchParams(r *http.Request, maxAllowedPages int) (query string, page int, err error) {
+func parseSearchParams(r *http.Request, maxAllowedPages int) (string, int, error) {
 	q := r.URL.Query()
 
-	query, err = validateQuery(q.Get("q"))
+	query, err := validateQuery(q.Get("q"))
 	if err != nil {
 		return "", 0, err
 	}
-	page, err = validatePage(q.Get("page"))
+	page, err := validatePage(q.Get("page"))
 	if err != nil {
 		return "", 0, err
 	}
