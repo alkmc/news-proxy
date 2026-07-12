@@ -3,8 +3,8 @@ services:
     container_name: news-proxy
     build: .
     ports:
-      - "${PORT:-3000}:${PORT:-3000}"
+      - "${PORT:-8080}:${PORT:-8080}"
     environment:
       - NEWS_API_KEY=${NEWS_API_KEY}
-      - PORT=${PORT:-3000}
+      - PORT=${PORT:-8080}
     restart: unless-stopped

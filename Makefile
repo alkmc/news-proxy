@@ -1,19 +1,14 @@
-.PHONY: build run test test-race fmt deadcode lint clean docker-build docker-up docker-down
+.PHONY: build run test fmt deadcode lint clean docker-build up down
 
-# Variables
 BINARY_NAME=news-proxy
-MAIN_PATH=./cmd/newsproxy/main.go
 
 build:
-	go build -o ${BINARY_NAME} ${MAIN_PATH}
+	go build -o ${BINARY_NAME} ./cmd/newsproxy
 
 run: build
 	./${BINARY_NAME}
 
 test:
-	go test -v ./...
-
-test-race:
 	go test -v -race ./...
 
 fmt:
@@ -33,8 +28,8 @@ clean:
 docker-build:
 	docker compose build
 
-docker-up:
+up:
 	docker compose up -d
 
-docker-down:
+down:
 	docker compose down

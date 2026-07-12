@@ -13,8 +13,6 @@ RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-w -s" -o news-proxy .
 FROM gcr.io/distroless/base-debian13
 COPY --from=builder --chown=nonroot:nonroot /app/news-proxy /news-proxy
 
-ENV PORT=8000
-
 USER nonroot:nonroot
 
 CMD ["/news-proxy"]
