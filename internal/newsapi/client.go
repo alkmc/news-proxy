@@ -5,11 +5,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
 	"time"
 )
+
+// maxBodyBytes caps how much of an upstream response body is read.
+const maxBodyBytes = 1 << 20
 
 // Client calls the NewsAPI /v2/everything endpoint with bounded paging.
 type Client struct {
@@ -88,7 +92,8 @@ func (c *Client) fetch(ctx context.Context, endpoint string, res *Results) error
 		return decodeUpstreamError(resp)
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(res); err != nil {
+	body := io.LimitReader(resp.Body, maxBodyBytes)
+	if err := json.NewDecoder(body).Decode(res); err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalidResponse, err)
 	}
 
@@ -109,8 +114,9 @@ func wrapTransportError(err error) error {
 func decodeUpstreamError(resp *http.Response) error {
 	sentinel := classifyStatus(resp.StatusCode)
 
+	body := io.LimitReader(resp.Body, maxBodyBytes)
 	var apiErr apiError
-	if err := json.NewDecoder(resp.Body).Decode(&apiErr); err != nil {
+	if err := json.NewDecoder(body).Decode(&apiErr); err != nil {
 		return fmt.Errorf("%w: status %d: failed to decode body: %w", sentinel, resp.StatusCode, err)
 	}
 	return fmt.Errorf("%w: status %d: %s", sentinel, resp.StatusCode, apiErr.Message)
