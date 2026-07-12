@@ -20,7 +20,7 @@ fmt:
 	gofumpt -l -w .
 
 deadcode:
-	go run golang.org/x/tools/cmd/deadcode@0.48.0 ./...
+	go run golang.org/x/tools/cmd/deadcode@v0.48.0 ./...
 
 lint:
 	golangci-lint run
