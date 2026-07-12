@@ -2,7 +2,7 @@
 
 # Variables
 BINARY_NAME=news-proxy
-MAIN_PATH=./cmd/newsApp/main.go
+MAIN_PATH=./cmd/newsproxy/main.go
 
 build:
 	go build -o ${BINARY_NAME} ${MAIN_PATH}
@@ -20,7 +20,7 @@ fmt:
 	gofumpt -l -w .
 
 deadcode:
-	go run golang.org/x/tools/cmd/deadcode@0.47.0 ./...
+	go run golang.org/x/tools/cmd/deadcode@0.48.0 ./...
 
 lint:
 	golangci-lint run
