@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/alkmc/news-proxy/internal/newsapi"
+	"github.com/alkmc/news-proxy/internal/view"
 )
 
 func TestNewsHandler_Index(t *testing.T) {
@@ -175,7 +176,7 @@ func setupTestHandler(client fetcher) *NewsHandler {
 		`Page: {{.CurrentPage}}, TotalPages: {{.TotalPages}}{{end}}{{else}}index page{{end}}`
 	tpl := template.Must(template.New("index.html").Parse(tplStr))
 	logger := slog.New(slog.DiscardHandler)
-	return NewNewsHandler(client, tpl, logger, 10, 100)
+	return NewNewsHandler(client, view.NewRenderer(tpl, logger), logger, 10, 100)
 }
 
 func mockFetchResponse(totalResults int) func(context.Context, string, int) (*newsapi.Results, error) {

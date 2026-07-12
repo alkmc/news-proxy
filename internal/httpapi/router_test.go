@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/alkmc/news-proxy/internal/newsapi"
+	"github.com/alkmc/news-proxy/internal/view"
 	"github.com/alkmc/news-proxy/ui"
 )
 
@@ -116,11 +117,12 @@ func TestRouter(t *testing.T) {
 func newTestServer(t *testing.T, client fetcher) *httptest.Server {
 	t.Helper()
 
-	tpl, err := ParseTemplate(ui.TemplateFS)
+	tpl, err := view.ParseTemplate(ui.TemplateFS)
 	if err != nil {
 		t.Fatal(err)
 	}
-	h := NewNewsHandler(client, tpl, slog.New(slog.DiscardHandler), 10, 100)
+	logger := slog.New(slog.DiscardHandler)
+	h := NewNewsHandler(client, view.NewRenderer(tpl, logger), logger, 10, 100)
 	ts := httptest.NewServer(NewMux(h))
 	t.Cleanup(ts.Close)
 	return ts

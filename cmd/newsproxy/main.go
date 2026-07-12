@@ -13,6 +13,7 @@ import (
 	"github.com/alkmc/news-proxy/internal/config"
 	"github.com/alkmc/news-proxy/internal/httpapi"
 	"github.com/alkmc/news-proxy/internal/newsapi"
+	"github.com/alkmc/news-proxy/internal/view"
 	"github.com/alkmc/news-proxy/ui"
 )
 
@@ -30,7 +31,7 @@ func run(logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	tpl, err := httpapi.ParseTemplate(ui.TemplateFS)
+	tpl, err := view.ParseTemplate(ui.TemplateFS)
 	if err != nil {
 		return fmt.Errorf("failed to parse template: %w", err)
 	}
@@ -45,7 +46,8 @@ func run(logger *slog.Logger) error {
 		return fmt.Errorf("failed to create news client: %w", err)
 	}
 
-	h := httpapi.NewNewsHandler(client, tpl, logger, cfg.NewsAPI.PageSize, cfg.NewsAPI.MaxResults)
+	renderer := view.NewRenderer(tpl, logger)
+	h := httpapi.NewNewsHandler(client, renderer, logger, cfg.NewsAPI.PageSize, cfg.NewsAPI.MaxResults)
 	mux := httpapi.NewMux(h)
 
 	addr := cfg.Server.Address()

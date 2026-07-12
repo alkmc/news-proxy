@@ -1,20 +1,17 @@
 package httpapi
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"html/template"
 	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
-	"sync"
-	"syscall"
 	"unicode/utf8"
 
 	"github.com/alkmc/news-proxy/internal/newsapi"
+	"github.com/alkmc/news-proxy/internal/view"
 )
 
 const (
@@ -24,12 +21,6 @@ const (
 	statusClientClosedRequest = 499
 )
 
-var bufPool = sync.Pool{
-	New: func() any {
-		return new(bytes.Buffer)
-	},
-}
-
 type (
 	fetcher interface {
 		Fetch(context.Context, string, int) (*newsapi.Results, error)
@@ -37,20 +28,20 @@ type (
 	// NewsHandler renders the index page and serves search results.
 	NewsHandler struct {
 		client     fetcher
-		tpl        *template.Template
+		renderer   *view.Renderer
 		logger     *slog.Logger
 		pageSize   int
 		maxResults int
 	}
 )
 
-// NewNewsHandler builds a NewsHandler with the given client, template, logger, and paging limits.
-func NewNewsHandler(client fetcher, tpl *template.Template, logger *slog.Logger,
-	pageSize, maxResults int,
+// NewNewsHandler builds a NewsHandler with the given client, renderer, logger, and paging limits.
+func NewNewsHandler(
+	client fetcher, v *view.Renderer, logger *slog.Logger, pageSize, maxResults int,
 ) *NewsHandler {
 	return &NewsHandler{
 		client:     client,
-		tpl:        tpl,
+		renderer:   v,
 		logger:     logger,
 		pageSize:   pageSize,
 		maxResults: maxResults,
@@ -59,7 +50,7 @@ func NewNewsHandler(client fetcher, tpl *template.Template, logger *slog.Logger,
 
 // Index renders the empty search page.
 func (h *NewsHandler) Index(w http.ResponseWriter, _ *http.Request) {
-	h.render(w, http.StatusOK, nil)
+	h.renderer.Render(w, http.StatusOK, nil)
 }
 
 // Search validates query parameters, fetches articles from NewsAPI, and renders the results page.
@@ -68,7 +59,7 @@ func (h *NewsHandler) Search(w http.ResponseWriter, r *http.Request) {
 
 	query, page, err := parseSearchParams(r, maxAllowedPages)
 	if err != nil {
-		h.renderError(w, http.StatusBadRequest, err.Error())
+		h.renderer.Error(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -78,45 +69,14 @@ func (h *NewsHandler) Search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s := &searchPage{
+	s := &view.SearchPage{
 		SearchKey:   query,
 		CurrentPage: page,
 		Results:     *results,
 		TotalPages:  countPages(min(results.TotalResults, h.maxResults), h.pageSize),
 	}
 
-	h.render(w, http.StatusOK, s)
-}
-
-func (h *NewsHandler) render(w http.ResponseWriter, status int, data *searchPage) {
-	buf, ok := bufPool.Get().(*bytes.Buffer)
-	if !ok {
-		buf = new(bytes.Buffer)
-	}
-	defer func() {
-		buf.Reset()
-		bufPool.Put(buf)
-	}()
-
-	if err := h.tpl.Execute(buf, data); err != nil {
-		h.logger.Error("template execution error", slog.Any("error", err))
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(status)
-	if _, err := buf.WriteTo(w); err != nil {
-		if errors.Is(err, syscall.EPIPE) || errors.Is(err, syscall.ECONNRESET) {
-			h.logger.Debug("connection aborted", slog.Any("error", err))
-			return
-		}
-		h.logger.Error("error writing response", slog.Any("error", err))
-	}
-}
-
-// renderError renders the page with an error message so failures stay styled HTML.
-func (h *NewsHandler) renderError(w http.ResponseWriter, status int, msg string) {
-	h.render(w, status, &searchPage{Error: msg})
+	h.renderer.Render(w, http.StatusOK, s)
 }
 
 func (h *NewsHandler) handleFetchError(w http.ResponseWriter, err error) {
@@ -129,20 +89,20 @@ func (h *NewsHandler) handleFetchError(w http.ResponseWriter, err error) {
 
 	switch {
 	case errors.Is(err, newsapi.ErrUpstreamTimeout):
-		h.renderError(w, http.StatusGatewayTimeout, "upstream timeout")
+		h.renderer.Error(w, http.StatusGatewayTimeout, "upstream timeout")
 	case errors.Is(err, newsapi.ErrUpstreamRateLimit):
 		w.Header().Set("Retry-After", "60")
-		h.renderError(w, http.StatusServiceUnavailable, "rate limit exceeded, try later")
+		h.renderer.Error(w, http.StatusServiceUnavailable, "rate limit exceeded, try later")
 	case errors.Is(err, newsapi.ErrUpstreamUnauthorized):
-		h.renderError(w, http.StatusBadGateway, "service misconfigured")
+		h.renderer.Error(w, http.StatusBadGateway, "service misconfigured")
 	case errors.Is(err, newsapi.ErrUpstreamBadRequest):
-		h.renderError(w, http.StatusBadRequest, "invalid search query")
+		h.renderer.Error(w, http.StatusBadRequest, "invalid search query")
 	case errors.Is(err, newsapi.ErrUpstreamServer),
 		errors.Is(err, newsapi.ErrUpstreamUnavailable),
 		errors.Is(err, newsapi.ErrInvalidResponse):
-		h.renderError(w, http.StatusBadGateway, "upstream unavailable")
+		h.renderer.Error(w, http.StatusBadGateway, "upstream unavailable")
 	default:
-		h.renderError(w, http.StatusInternalServerError, "failed to fetch news")
+		h.renderer.Error(w, http.StatusInternalServerError, "failed to fetch news")
 	}
 }
 
