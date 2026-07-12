@@ -25,18 +25,19 @@ var bufPool = sync.Pool{
 	},
 }
 
-type fetcher interface {
-	Fetch(context.Context, string, int) (*newsapi.Results, error)
-}
-
-// NewsHandler renders the index page and serves search results.
-type NewsHandler struct {
-	client     fetcher
-	tpl        *template.Template
-	logger     *slog.Logger
-	pageSize   int
-	maxResults int
-}
+type (
+	fetcher interface {
+		Fetch(context.Context, string, int) (*newsapi.Results, error)
+	}
+	// NewsHandler renders the index page and serves search results.
+	NewsHandler struct {
+		client     fetcher
+		tpl        *template.Template
+		logger     *slog.Logger
+		pageSize   int
+		maxResults int
+	}
+)
 
 // NewNewsHandler builds a NewsHandler with the given client, template, logger, and paging limits.
 func NewNewsHandler(client fetcher, tpl *template.Template, logger *slog.Logger,
@@ -103,6 +104,9 @@ func (h *NewsHandler) render(w http.ResponseWriter, data *searchPage) {
 }
 
 func (h *NewsHandler) handleFetchError(w http.ResponseWriter, err error) {
+	if errors.Is(err, context.Canceled) {
+		return
+	}
 	h.logger.Error("failed to fetch news", slog.Any("error", err))
 
 	switch {
@@ -163,7 +167,6 @@ func validatePage(pageStr string) (int, error) {
 	return page, nil
 }
 
-// countPages returns the number of pages, rounding up; 0 if total or pageSize is non-positive.
 func countPages(total, pageSize int) int {
 	if total <= 0 || pageSize <= 0 {
 		return 0

@@ -77,7 +77,7 @@ func (c *Client) fetch(ctx context.Context, endpoint string, res *Results) error
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return classifyTransportError(err)
+		return wrapTransportError(err)
 	}
 	defer resp.Body.Close()
 
@@ -92,15 +92,17 @@ func (c *Client) fetch(ctx context.Context, endpoint string, res *Results) error
 	return nil
 }
 
-// classifyTransportError maps timeouts and network errors to sentinel errors.
-func classifyTransportError(err error) error {
-	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+func wrapTransportError(err error) error {
+	switch {
+	case errors.Is(err, context.Canceled):
+		return fmt.Errorf("request canceled: %w", err)
+	case errors.Is(err, context.DeadlineExceeded):
 		return fmt.Errorf("%w: %w", ErrUpstreamTimeout, err)
+	default:
+		return fmt.Errorf("%w: %w", ErrUpstreamUnavailable, err)
 	}
-	return fmt.Errorf("%w: %w", ErrUpstreamUnavailable, err)
 }
 
-// decodeUpstreamError wraps a non-2xx response in a status-specific sentinel.
 func decodeUpstreamError(resp *http.Response) error {
 	sentinel := classifyStatus(resp.StatusCode)
 
