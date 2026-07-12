@@ -3,6 +3,8 @@ package config
 import (
 	"cmp"
 	"errors"
+	"fmt"
+	"log/slog"
 	"net"
 	"os"
 	"time"
@@ -11,8 +13,9 @@ import (
 type (
 	// Config holds application configuration.
 	Config struct {
-		Server  Server
-		NewsAPI NewsAPI
+		Server   Server
+		NewsAPI  NewsAPI
+		LogLevel slog.Level
 	}
 	// Server holds HTTP server configuration.
 	Server struct {
@@ -40,6 +43,13 @@ func Load() (Config, error) {
 		return Config{}, errors.New("NEWS_API_KEY environment variable must be set")
 	}
 
+	var logLevel slog.Level // zero value is INFO
+	if s := os.Getenv("LOG_LEVEL"); s != "" {
+		if err := logLevel.UnmarshalText([]byte(s)); err != nil {
+			return Config{}, fmt.Errorf("invalid LOG_LEVEL: %w", err)
+		}
+	}
+
 	return Config{
 		Server: Server{
 			Port:              cmp.Or(os.Getenv("PORT"), "8080"),
@@ -56,6 +66,7 @@ func Load() (Config, error) {
 			MaxResults:   100,              // NewsAPI free tier limit
 			FetchTimeout: 10 * time.Second, // max time to fetch data from NewsAPI
 		},
+		LogLevel: logLevel,
 	}, nil
 }
 

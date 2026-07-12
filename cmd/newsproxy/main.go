@@ -18,19 +18,21 @@ import (
 )
 
 func main() {
-	logger := setupLogger()
+	cfg, err := config.Load()
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "load config: %v\n", err)
+		os.Exit(1)
+	}
+
+	logger := config.NewLogger(os.Stdout, cfg.LogLevel)
 	slog.SetDefault(logger)
-	if err := run(logger); err != nil {
+	if err := run(logger, cfg); err != nil {
 		logger.Error("proxy failed", slog.Any("error", err))
 		os.Exit(1)
 	}
 }
 
-func run(logger *slog.Logger) error {
-	cfg, err := config.Load()
-	if err != nil {
-		return err
-	}
+func run(logger *slog.Logger, cfg config.Config) error {
 	tpl, err := view.ParseTemplate(ui.TemplateFS)
 	if err != nil {
 		return fmt.Errorf("failed to parse template: %w", err)
@@ -86,17 +88,4 @@ func run(logger *slog.Logger) error {
 
 	logger.Info("server shut down gracefully")
 	return nil
-}
-
-func setupLogger() *slog.Logger {
-	return slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		ReplaceAttr: loggerReplaceAttrs,
-	}))
-}
-
-func loggerReplaceAttrs(_ []string, a slog.Attr) slog.Attr {
-	if a.Value.Kind() == slog.KindDuration {
-		return slog.String(a.Key, fmt.Sprintf("%dms", a.Value.Duration().Milliseconds()))
-	}
-	return a
 }
