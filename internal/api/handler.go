@@ -47,7 +47,7 @@ func NewNewsHandler(client newsClient, tpl *template.Template, logger *slog.Logg
 }
 
 // Index renders the empty search page.
-func (h *NewsHandler) Index(w http.ResponseWriter, r *http.Request) {
+func (h *NewsHandler) Index(w http.ResponseWriter, _ *http.Request) {
 	h.render(w, nil)
 }
 
@@ -80,7 +80,10 @@ func (h *NewsHandler) Search(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *NewsHandler) render(w http.ResponseWriter, data *searchNews) {
-	buf := bufPool.Get().(*bytes.Buffer)
+	buf, ok := bufPool.Get().(*bytes.Buffer)
+	if !ok {
+		buf = new(bytes.Buffer)
+	}
 	defer func() {
 		buf.Reset()
 		bufPool.Put(buf)

@@ -66,7 +66,7 @@ func TestNewsHandler_Search(t *testing.T) {
 			name:      "empty page defaults to 1",
 			targetURL: "/search?q=golang",
 			mockClient: &mockNewsClient{
-				mockFetchFn: func(ctx context.Context, searchKey string, page int) (*results, error) {
+				mockFetchFn: func(_ context.Context, _ string, page int) (*results, error) {
 					if page != 1 {
 						return nil, errors.New("expected page 1")
 					}
@@ -117,7 +117,7 @@ func TestNewsHandler_Search(t *testing.T) {
 			name:      "query is trimmed before fetch",
 			targetURL: "/search?q=" + url.QueryEscape("  golang  "),
 			mockClient: &mockNewsClient{
-				mockFetchFn: func(ctx context.Context, searchKey string, page int) (*results, error) {
+				mockFetchFn: func(_ context.Context, searchKey string, _ int) (*results, error) {
 					if searchKey != "golang" {
 						return nil, fmt.Errorf("expected trimmed query 'golang', got %q", searchKey)
 					}
@@ -180,14 +180,15 @@ func TestNewsHandler_Search(t *testing.T) {
 
 // setupTestHandler configures a NewsHandler with a dummy template and silent logger.
 func setupTestHandler(client newsClient) *NewsHandler {
-	tplStr := `{{if .}}Query: {{.SearchKey}}, Page: {{.CurrentPage}}, TotalPages: {{.TotalPages}}{{else}}index page{{end}}`
+	tplStr := `{{if .}}Query: {{.SearchKey}}, Page: {{.CurrentPage}}, ` +
+		`TotalPages: {{.TotalPages}}{{else}}index page{{end}}`
 	tpl := template.Must(template.New("index.html").Parse(tplStr))
 	logger := slog.New(slog.DiscardHandler)
 	return NewNewsHandler(client, tpl, logger)
 }
 
 func mockFetchResponse(totalResults int) func(context.Context, string, int) (*results, error) {
-	return func(ctx context.Context, searchKey string, page int) (*results, error) {
+	return func(_ context.Context, _ string, _ int) (*results, error) {
 		return &results{
 			Status:       "ok",
 			TotalResults: totalResults,

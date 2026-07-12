@@ -155,10 +155,14 @@ func (c *Client) newRequest(ctx context.Context, endpoint string) (*http.Request
 }
 
 func customTransport() *http.Transport {
-	transport := http.DefaultTransport.(*http.Transport).Clone()
-	transport.MaxIdleConns = 100
-	transport.MaxIdleConnsPerHost = 10
-	transport.MaxConnsPerHost = 10
-	transport.IdleConnTimeout = 30 * time.Second
-	return transport
+	base, ok := http.DefaultTransport.(*http.Transport)
+	if !ok {
+		return &http.Transport{}
+	}
+	t := base.Clone()
+	t.MaxIdleConns = 100
+	t.MaxIdleConnsPerHost = 10
+	t.MaxConnsPerHost = 10
+	t.IdleConnTimeout = 30 * time.Second
+	return t
 }
