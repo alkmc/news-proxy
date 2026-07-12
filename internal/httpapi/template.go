@@ -13,7 +13,10 @@ func ParseTemplate(fsys fs.FS) (*template.Template, error) {
 		ParseFS(fsys, "template/index.html")
 }
 
-// formatDate renders a timestamp as "Month D, YYYY".
+// formatDate renders a timestamp as "Month D, YYYY", empty for missing dates.
 func formatDate(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
 	return t.Format("January 2, 2006")
 }
