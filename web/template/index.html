@@ -44,7 +44,7 @@
             <p class="description">{{ .Description }}</p>
             <div class="metadata">
               <p class="source">{{ .Source.Name }}</p>
-              <time class="published-date">{{ .FormatPublishedDate }}</time>
+              <time class="published-date">{{ formatDate .PublishedAt }}</time>
             </div>
           </div>
           <img class="article-image" src="{{ .URLToImage }}" />

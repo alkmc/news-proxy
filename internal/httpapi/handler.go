@@ -1,4 +1,4 @@
-package api
+package httpapi
 
 import (
 	"bytes"
@@ -12,6 +12,8 @@ import (
 	"strings"
 	"sync"
 	"unicode/utf8"
+
+	"github.com/alkmc/news-proxy/internal/newsapi"
 )
 
 // maxQueryLength caps queries in runes, not bytes.
@@ -23,26 +25,29 @@ var bufPool = sync.Pool{
 	},
 }
 
-type newsClient interface {
-	Fetch(ctx context.Context, searchKey string, page int) (*results, error)
-	GetPageSize() int
-	GetMaxResults() int
+type fetcher interface {
+	Fetch(context.Context, string, int) (*newsapi.Results, error)
 }
 
 // NewsHandler renders the index page and serves search results.
 type NewsHandler struct {
-	client newsClient
-	tpl    *template.Template
-	logger *slog.Logger
+	client     fetcher
+	tpl        *template.Template
+	logger     *slog.Logger
+	pageSize   int
+	maxResults int
 }
 
-// NewNewsHandler builds a NewsHandler with the given client, template, and logger.
-func NewNewsHandler(client newsClient, tpl *template.Template, logger *slog.Logger,
+// NewNewsHandler builds a NewsHandler with the given client, template, logger, and paging limits.
+func NewNewsHandler(client fetcher, tpl *template.Template, logger *slog.Logger,
+	pageSize, maxResults int,
 ) *NewsHandler {
 	return &NewsHandler{
-		client: client,
-		tpl:    tpl,
-		logger: logger,
+		client:     client,
+		tpl:        tpl,
+		logger:     logger,
+		pageSize:   pageSize,
+		maxResults: maxResults,
 	}
 }
 
@@ -53,9 +58,7 @@ func (h *NewsHandler) Index(w http.ResponseWriter, _ *http.Request) {
 
 // Search validates query parameters, fetches articles from NewsAPI, and renders the results page.
 func (h *NewsHandler) Search(w http.ResponseWriter, r *http.Request) {
-	pageSize := h.client.GetPageSize()
-	maxResults := h.client.GetMaxResults()
-	maxAllowedPages := countPages(maxResults, pageSize)
+	maxAllowedPages := countPages(h.maxResults, h.pageSize)
 
 	query, page, err := parseSearchParams(r, maxAllowedPages)
 	if err != nil {
@@ -69,17 +72,17 @@ func (h *NewsHandler) Search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s := &searchNews{
+	s := &searchPage{
 		SearchKey:   query,
 		CurrentPage: page,
 		Results:     *results,
-		TotalPages:  countPages(min(results.TotalResults, maxResults), pageSize),
+		TotalPages:  countPages(min(results.TotalResults, h.maxResults), h.pageSize),
 	}
 
 	h.render(w, s)
 }
 
-func (h *NewsHandler) render(w http.ResponseWriter, data *searchNews) {
+func (h *NewsHandler) render(w http.ResponseWriter, data *searchPage) {
 	buf, ok := bufPool.Get().(*bytes.Buffer)
 	if !ok {
 		buf = new(bytes.Buffer)
@@ -103,18 +106,18 @@ func (h *NewsHandler) handleFetchError(w http.ResponseWriter, err error) {
 	h.logger.Error("failed to fetch news", slog.Any("error", err))
 
 	switch {
-	case errors.Is(err, ErrUpstreamTimeout):
+	case errors.Is(err, newsapi.ErrUpstreamTimeout):
 		http.Error(w, "upstream timeout", http.StatusGatewayTimeout)
-	case errors.Is(err, ErrUpstreamRateLimit):
+	case errors.Is(err, newsapi.ErrUpstreamRateLimit):
 		w.Header().Set("Retry-After", "60")
 		http.Error(w, "rate limit exceeded, try later", http.StatusServiceUnavailable)
-	case errors.Is(err, ErrUpstreamUnauthorized):
+	case errors.Is(err, newsapi.ErrUpstreamUnauthorized):
 		http.Error(w, "service misconfigured", http.StatusBadGateway)
-	case errors.Is(err, ErrUpstreamBadRequest):
+	case errors.Is(err, newsapi.ErrUpstreamBadRequest):
 		http.Error(w, "invalid search query", http.StatusBadRequest)
-	case errors.Is(err, ErrUpstreamServer),
-		errors.Is(err, ErrUpstreamUnavailable),
-		errors.Is(err, ErrInvalidResponse):
+	case errors.Is(err, newsapi.ErrUpstreamServer),
+		errors.Is(err, newsapi.ErrUpstreamUnavailable),
+		errors.Is(err, newsapi.ErrInvalidResponse):
 		http.Error(w, "upstream unavailable", http.StatusBadGateway)
 	default:
 		http.Error(w, "failed to fetch news", http.StatusInternalServerError)

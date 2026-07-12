@@ -1,0 +1,21 @@
+package httpapi
+
+import (
+	"fmt"
+	"html/template"
+	"io/fs"
+	"time"
+)
+
+// ParseTemplate parses the index template from fsys with the app's template functions.
+func ParseTemplate(fsys fs.FS) (*template.Template, error) {
+	return template.New("index.html").
+		Funcs(template.FuncMap{"formatDate": formatDate}).
+		ParseFS(fsys, "template/index.html")
+}
+
+// formatDate renders a timestamp as "Month D, YYYY".
+func formatDate(t time.Time) string {
+	year, month, day := t.Date()
+	return fmt.Sprintf("%v %d, %d", month, day, year)
+}

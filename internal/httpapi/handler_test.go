@@ -1,4 +1,4 @@
-package api
+package httpapi
 
 import (
 	"context"
@@ -11,6 +11,8 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+
+	"github.com/alkmc/news-proxy/internal/newsapi"
 )
 
 func TestNewsHandler_Index(t *testing.T) {
@@ -45,8 +47,6 @@ func TestNewsHandler_Search(t *testing.T) {
 			targetURL: "/search?q=golang&page=1",
 			mockClient: &mockNewsClient{
 				mockFetchFn: mockFetchResponse(5),
-				pageSize:    10,
-				maxResults:  100,
 			},
 			expectedStatus: http.StatusOK,
 			bodyContains:   "Query: golang, Page: 1, TotalPages: 1",
@@ -56,8 +56,6 @@ func TestNewsHandler_Search(t *testing.T) {
 			targetURL: "/search?q=golang&page=5",
 			mockClient: &mockNewsClient{
 				mockFetchFn: mockFetchResponse(150),
-				pageSize:    10,
-				maxResults:  100,
 			},
 			expectedStatus: http.StatusOK,
 			bodyContains:   "Query: golang, Page: 5, TotalPages: 10",
@@ -66,14 +64,12 @@ func TestNewsHandler_Search(t *testing.T) {
 			name:      "empty page defaults to 1",
 			targetURL: "/search?q=golang",
 			mockClient: &mockNewsClient{
-				mockFetchFn: func(_ context.Context, _ string, page int) (*results, error) {
+				mockFetchFn: func(_ context.Context, _ string, page int) (*newsapi.Results, error) {
 					if page != 1 {
 						return nil, errors.New("expected page 1")
 					}
-					return &results{Status: "ok", TotalResults: 1}, nil
+					return &newsapi.Results{Status: "ok", TotalResults: 1}, nil
 				},
-				pageSize:   10,
-				maxResults: 100,
 			},
 			expectedStatus: http.StatusOK,
 			bodyContains:   "Query: golang, Page: 1, TotalPages: 1",
@@ -117,14 +113,12 @@ func TestNewsHandler_Search(t *testing.T) {
 			name:      "query is trimmed before fetch",
 			targetURL: "/search?q=" + url.QueryEscape("  golang  "),
 			mockClient: &mockNewsClient{
-				mockFetchFn: func(_ context.Context, searchKey string, _ int) (*results, error) {
+				mockFetchFn: func(_ context.Context, searchKey string, _ int) (*newsapi.Results, error) {
 					if searchKey != "golang" {
 						return nil, fmt.Errorf("expected trimmed query 'golang', got %q", searchKey)
 					}
-					return &results{Status: "ok", TotalResults: 0}, nil
+					return &newsapi.Results{Status: "ok", TotalResults: 0}, nil
 				},
-				pageSize:   10,
-				maxResults: 100,
 			},
 			expectedStatus: http.StatusOK,
 			bodyContains:   "Query: golang",
@@ -132,16 +126,13 @@ func TestNewsHandler_Search(t *testing.T) {
 		{
 			name:           "query at max length passes validation",
 			targetURL:      "/search?q=" + url.QueryEscape(strings.Repeat("a", maxQueryLength)),
-			mockClient:     &mockNewsClient{mockFetchFn: mockFetchResponse(0), pageSize: 10, maxResults: 100},
+			mockClient:     &mockNewsClient{mockFetchFn: mockFetchResponse(0)},
 			expectedStatus: http.StatusOK,
 		},
 		{
-			name:      "page exceeds limit",
-			targetURL: "/search?q=golang&page=11",
-			mockClient: &mockNewsClient{
-				pageSize:   10,
-				maxResults: 100,
-			},
+			name:           "page exceeds limit",
+			targetURL:      "/search?q=golang&page=11",
+			mockClient:     &mockNewsClient{},
 			expectedStatus: http.StatusBadRequest,
 			bodyContains:   "page limit exceeded",
 		},
@@ -149,7 +140,7 @@ func TestNewsHandler_Search(t *testing.T) {
 			name:      "client fetch error",
 			targetURL: "/search?q=golang",
 			mockClient: &mockNewsClient{
-				mockFetchFn: func(context.Context, string, int) (*results, error) {
+				mockFetchFn: func(context.Context, string, int) (*newsapi.Results, error) {
 					return nil, errors.New("upstream timeout")
 				},
 			},
@@ -178,49 +169,33 @@ func TestNewsHandler_Search(t *testing.T) {
 	}
 }
 
-// setupTestHandler configures a NewsHandler with a dummy template and silent logger.
-func setupTestHandler(client newsClient) *NewsHandler {
+// setupTestHandler configures a NewsHandler with a dummy template, silent logger, and 10/100 paging.
+func setupTestHandler(client fetcher) *NewsHandler {
 	tplStr := `{{if .}}Query: {{.SearchKey}}, Page: {{.CurrentPage}}, ` +
 		`TotalPages: {{.TotalPages}}{{else}}index page{{end}}`
 	tpl := template.Must(template.New("index.html").Parse(tplStr))
 	logger := slog.New(slog.DiscardHandler)
-	return NewNewsHandler(client, tpl, logger)
+	return NewNewsHandler(client, tpl, logger, 10, 100)
 }
 
-func mockFetchResponse(totalResults int) func(context.Context, string, int) (*results, error) {
-	return func(_ context.Context, _ string, _ int) (*results, error) {
-		return &results{
+func mockFetchResponse(totalResults int) func(context.Context, string, int) (*newsapi.Results, error) {
+	return func(_ context.Context, _ string, _ int) (*newsapi.Results, error) {
+		return &newsapi.Results{
 			Status:       "ok",
 			TotalResults: totalResults,
-			Articles:     []article{{Title: "Test Article"}},
+			Articles:     []newsapi.Article{{Title: "Test Article"}},
 		}, nil
 	}
 }
 
-// mockNewsClient implements the newsClient interface for testing.
+// mockNewsClient implements the fetcher interface for testing.
 type mockNewsClient struct {
-	mockFetchFn func(context.Context, string, int) (*results, error)
-	pageSize    int
-	maxResults  int
+	mockFetchFn func(context.Context, string, int) (*newsapi.Results, error)
 }
 
-func (m *mockNewsClient) Fetch(ctx context.Context, searchKey string, page int) (*results, error) {
+func (m *mockNewsClient) Fetch(ctx context.Context, searchKey string, page int) (*newsapi.Results, error) {
 	if m.mockFetchFn != nil {
 		return m.mockFetchFn(ctx, searchKey, page)
 	}
-	return &results{}, nil
-}
-
-func (m *mockNewsClient) GetPageSize() int {
-	if m.pageSize == 0 {
-		return 10
-	}
-	return m.pageSize
-}
-
-func (m *mockNewsClient) GetMaxResults() int {
-	if m.maxResults == 0 {
-		return 100
-	}
-	return m.maxResults
+	return &newsapi.Results{}, nil
 }

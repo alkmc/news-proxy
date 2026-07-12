@@ -1,4 +1,4 @@
-package api
+package httpapi
 
 import (
 	"cmp"
@@ -35,7 +35,7 @@ func staticCache(next http.Handler) http.Handler {
 	})
 }
 
-// logMD logs method, path, and request duration.
+// logMD logs request metadata: method, path, and duration.
 func logMD(logger *slog.Logger) middleware {
 	logger = cmp.Or(logger, slog.Default())
 	return func(next http.Handler) http.Handler {

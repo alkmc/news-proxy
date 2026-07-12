@@ -18,14 +18,14 @@ const (
 	BaseURL    = "https://newsapi.org" // NewsAPI root URL
 )
 
-// GetPort returns the listen address.
-func GetPort() string {
+// ListenAddr returns the listen address, e.g. ":3000".
+func ListenAddr() string {
 	port := cmp.Or(os.Getenv("PORT"), defaultPort)
 	return net.JoinHostPort("", port)
 }
 
-// GetAPIKey reads NEWS_API_KEY from the environment.
-func GetAPIKey() (string, error) {
+// APIKey reads NEWS_API_KEY from the environment.
+func APIKey() (string, error) {
 	apiKey := os.Getenv("NEWS_API_KEY")
 	if apiKey == "" {
 		return "", errors.New("NEWS_API_KEY environment variable must be set")
