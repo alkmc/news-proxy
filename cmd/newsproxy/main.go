@@ -13,7 +13,7 @@ import (
 	"github.com/alkmc/news-proxy/internal/config"
 	"github.com/alkmc/news-proxy/internal/httpapi"
 	"github.com/alkmc/news-proxy/internal/newsapi"
-	"github.com/alkmc/news-proxy/web"
+	"github.com/alkmc/news-proxy/ui"
 )
 
 func main() {
@@ -30,7 +30,7 @@ func run(logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	tpl, err := httpapi.ParseTemplate(web.TemplateFS)
+	tpl, err := httpapi.ParseTemplate(ui.TemplateFS)
 	if err != nil {
 		return fmt.Errorf("failed to parse template: %w", err)
 	}

@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/alkmc/news-proxy/internal/newsapi"
-	"github.com/alkmc/news-proxy/web"
+	"github.com/alkmc/news-proxy/ui"
 )
 
 func TestRouter(t *testing.T) {
@@ -116,7 +116,7 @@ func TestRouter(t *testing.T) {
 func newTestServer(t *testing.T, client fetcher) *httptest.Server {
 	t.Helper()
 
-	tpl, err := ParseTemplate(web.TemplateFS)
+	tpl, err := ParseTemplate(ui.TemplateFS)
 	if err != nil {
 		t.Fatal(err)
 	}
