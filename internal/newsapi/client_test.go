@@ -82,6 +82,14 @@ func TestClient_Fetch(t *testing.T) {
 			wantSentinel: ErrUpstreamRateLimit,
 		},
 		{
+			name:         "service unavailable",
+			mockStatus:   http.StatusServiceUnavailable,
+			mockBody:     `{"status":"error","code":"","message":"service unavailable"}`,
+			wantErr:      true,
+			errContains:  "upstream unavailable: status 503: service unavailable",
+			wantSentinel: ErrUpstreamUnavailable,
+		},
+		{
 			name:         "bad json",
 			mockStatus:   http.StatusOK,
 			mockBody:     `{ bad json ]`,

@@ -133,6 +133,8 @@ func classifyStatus(status int) error {
 		return ErrUpstreamRateLimit
 	case status >= 400 && status < 500:
 		return ErrUpstreamBadRequest
+	case status == http.StatusServiceUnavailable:
+		return ErrUpstreamUnavailable
 	default:
 		return ErrUpstreamServer
 	}
