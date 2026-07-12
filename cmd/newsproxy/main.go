@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 
 	"github.com/alkmc/news-proxy/internal/config"
@@ -63,29 +64,30 @@ func run(logger *slog.Logger, cfg config.Config) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	serverErr := make(chan error, 1)
-	go func() {
-		serverErr <- srv.ListenAndServe()
-	}()
-	logger.Info("server started", slog.String("addr", addr))
-
-	select {
-	case err := <-serverErr:
-		if !errors.Is(err, http.ErrServerClosed) {
-			return fmt.Errorf("server listen failed: %w", err)
-		}
-	case <-ctx.Done():
-		logger.Info("signal closing server received")
+	var wg sync.WaitGroup
+	var shutdownErr error
+	wg.Go(func() {
+		<-ctx.Done()
+		logger.Info("shutting down server")
 		shutdownCtx, cancel := context.WithTimeout(
 			context.WithoutCancel(ctx),
 			cfg.Server.ShutdownTimeout,
 		)
 		defer cancel()
-		if err := srv.Shutdown(shutdownCtx); err != nil {
-			return fmt.Errorf("server shutdown failed: %w", err)
-		}
-	}
+		shutdownErr = srv.Shutdown(shutdownCtx)
+	})
 
+	logger.Info("server started", slog.String("addr", addr))
+	err = srv.ListenAndServe()
+	stop()
+	wg.Wait()
+
+	if !errors.Is(err, http.ErrServerClosed) {
+		return fmt.Errorf("server listen failed: %w", err)
+	}
+	if shutdownErr != nil {
+		return fmt.Errorf("server shutdown failed: %w", shutdownErr)
+	}
 	logger.Info("server shut down gracefully")
 	return nil
 }
