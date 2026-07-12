@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"unicode/utf8"
 
 	"github.com/alkmc/news-proxy/internal/newsapi"
@@ -101,6 +102,10 @@ func (h *NewsHandler) render(w http.ResponseWriter, status int, data *searchPage
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
 	if _, err := buf.WriteTo(w); err != nil {
+		if errors.Is(err, syscall.EPIPE) || errors.Is(err, syscall.ECONNRESET) {
+			h.logger.Debug("connection aborted", slog.Any("error", err))
+			return
+		}
 		h.logger.Error("error writing response", slog.Any("error", err))
 	}
 }
