@@ -1,10 +1,9 @@
-.PHONY: build run test test-race clean docker-build docker-up docker-down
+.PHONY: build run test test-race fmt deadcode lint clean docker-build docker-up docker-down
 
 # Variables
 BINARY_NAME=news-proxy
 MAIN_PATH=./cmd/newsApp/main.go
 
-# Go commands
 build:
 	go build -o ${BINARY_NAME} ${MAIN_PATH}
 
@@ -16,6 +15,15 @@ test:
 
 test-race:
 	go test -v -race ./...
+
+fmt:
+	gofumpt -l -w .
+
+deadcode:
+	go run golang.org/x/tools/cmd/deadcode@0.47.0 ./...
+
+lint:
+	golangci-lint run
 
 clean:
 	go clean
