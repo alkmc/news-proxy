@@ -74,6 +74,12 @@ func TestRouter(t *testing.T) {
 			wantStatus: http.StatusNotFound,
 		},
 		{
+			name:       "ping",
+			path:       "/ping",
+			client:     &mockNewsClient{},
+			wantStatus: http.StatusNoContent,
+		},
+		{
 			name:       "unknown path",
 			path:       "/nope",
 			client:     &mockNewsClient{},

@@ -12,5 +12,6 @@ func NewMux(h *Handler) http.Handler {
 	mux.Handle("GET /static/", staticCache(noDirListing(http.FileServerFS(ui.StaticFS))))
 	mux.HandleFunc("GET /search", h.Search)
 	mux.HandleFunc("GET /{$}", h.Index)
+	mux.HandleFunc("GET /ping", ping)
 	return logMD(h.logger)(recoverPanic(securityHeaders(mux)))
 }

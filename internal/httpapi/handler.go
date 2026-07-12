@@ -53,6 +53,11 @@ func (h *Handler) Index(w http.ResponseWriter, _ *http.Request) {
 	h.renderer.Render(w, http.StatusOK, nil)
 }
 
+// ping reports service health for container healthchecks.
+func ping(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // Search validates query parameters, fetches articles from NewsAPI, and renders the results page.
 func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 	maxAllowedPages := countPages(h.maxResults, h.pageSize)
