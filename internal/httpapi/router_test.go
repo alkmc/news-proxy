@@ -14,6 +14,9 @@ import (
 	"github.com/alkmc/news-proxy/ui"
 )
 
+// testHost can be any absolute URL, the in-memory test server answers regardless of the host.
+const testHost = "http://newsproxy.test"
+
 func TestRouter(t *testing.T) {
 	t.Parallel()
 
@@ -101,7 +104,7 @@ func TestRouter(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			ts := newTestServer(t, tc.client)
+			ts := testServer(t, tc.client)
 			status, headers, body := get(t, ts, tc.path)
 
 			if status != tc.wantStatus {
@@ -122,9 +125,9 @@ func TestRouter(t *testing.T) {
 func TestRouter_HTMXPartial(t *testing.T) {
 	t.Parallel()
 
-	ts := newTestServer(t, &mockNewsClient{mockFetchFn: mockFetchResponse(5)})
+	ts := testServer(t, &mockNewsClient{mockFetchFn: mockFetchResponse(5)})
 
-	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, ts.URL+"/search?q=golang", nil)
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, testHost+"/search?q=golang", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,8 +154,8 @@ func TestRouter_HTMXPartial(t *testing.T) {
 	}
 }
 
-// newTestServer starts the full router with the real template and a mock client.
-func newTestServer(t *testing.T, client fetcher) *httptest.Server {
+// serveRouter builds the full router with the real template and a mock client.
+func testServer(t *testing.T, client fetcher) *httptest.Server {
 	t.Helper()
 
 	tpl, err := view.ParseTemplate(ui.TemplateFS)
@@ -161,15 +164,13 @@ func newTestServer(t *testing.T, client fetcher) *httptest.Server {
 	}
 	logger := slog.New(slog.DiscardHandler)
 	h := NewHandler(client, view.NewRenderer(tpl, logger), logger, 10, 100)
-	ts := httptest.NewServer(NewMux(h))
-	t.Cleanup(ts.Close)
-	return ts
+	return httptest.NewTestServer(t, NewMux(h))
 }
 
 func get(t *testing.T, ts *httptest.Server, path string) (int, http.Header, string) {
 	t.Helper()
 
-	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, ts.URL+path, nil)
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, testHost+path, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

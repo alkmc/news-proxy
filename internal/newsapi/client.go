@@ -2,7 +2,7 @@ package newsapi
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -15,21 +15,22 @@ import (
 // maxBodyBytes caps how much of an upstream response body is read.
 const maxBodyBytes = 1 << 20
 
-// Client calls the NewsAPI /v2/everything endpoint with bounded paging.
-type Client struct {
-	baseParsedURL *url.URL
-	apiKey        string
-	pageSize      int
-	httpClient    *http.Client
-}
-
-// Config configures the API Client.
-type Config struct {
-	BaseURL  string
-	APIKey   string
-	PageSize int
-	Timeout  time.Duration
-}
+type (
+	// Client calls the NewsAPI /v2/everything endpoint with bounded paging.
+	Client struct {
+		baseParsedURL *url.URL
+		apiKey        string
+		pageSize      int
+		httpClient    *http.Client
+	}
+	// Config configures the API Client.
+	Config struct {
+		BaseURL  string
+		APIKey   string
+		PageSize int
+		Timeout  time.Duration
+	}
+)
 
 // NewClient parses the base URL and returns a configured Client.
 func NewClient(cfg Config) (*Client, error) {
@@ -93,7 +94,7 @@ func (c *Client) fetch(ctx context.Context, endpoint string, res *Results) error
 	}
 
 	body := io.LimitReader(resp.Body, maxBodyBytes)
-	if err := json.NewDecoder(body).Decode(res); err != nil {
+	if err := json.UnmarshalRead(body, res); err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalidResponse, err)
 	}
 	if res.Status != "ok" {
@@ -119,7 +120,7 @@ func decodeUpstreamError(resp *http.Response) error {
 
 	body := io.LimitReader(resp.Body, maxBodyBytes)
 	var apiErr apiError
-	if err := json.NewDecoder(body).Decode(&apiErr); err != nil {
+	if err := json.UnmarshalRead(body, &apiErr); err != nil {
 		return fmt.Errorf("%w: status %d: failed to decode body: %w", sentinel, resp.StatusCode, err)
 	}
 	return fmt.Errorf("%w: status %d: %s", sentinel, resp.StatusCode, apiErr.Message)
