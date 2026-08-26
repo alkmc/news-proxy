@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"log/slog"
 	"net/http"
 	"time"
 )
@@ -14,7 +15,7 @@ type ServerTimeouts struct {
 }
 
 // NewServer builds the HTTP server.
-func NewServer(addr string, handler http.Handler, timeouts ServerTimeouts) *http.Server {
+func NewServer(addr string, handler http.Handler, l *slog.Logger, timeouts ServerTimeouts) *http.Server {
 	return &http.Server{
 		Addr:              addr,
 		Handler:           handler,
@@ -22,5 +23,7 @@ func NewServer(addr string, handler http.Handler, timeouts ServerTimeouts) *http
 		ReadHeaderTimeout: timeouts.ReadHeader,
 		WriteTimeout:      timeouts.Write,
 		IdleTimeout:       timeouts.Idle,
+		// otherwise net/http internal errors land as Info and vanish above that level
+		ErrorLog: slog.NewLogLogger(l.Handler(), slog.LevelError),
 	}
 }

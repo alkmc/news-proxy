@@ -54,7 +54,7 @@ func run(logger *slog.Logger, cfg config.Config) error {
 	mux := httpapi.NewMux(h)
 
 	addr := cfg.Server.Address()
-	srv := httpapi.NewServer(addr, mux, httpapi.ServerTimeouts{
+	srv := httpapi.NewServer(addr, mux, logger, httpapi.ServerTimeouts{
 		Read:       cfg.Server.ReadTimeout,
 		ReadHeader: cfg.Server.ReadHeaderTimeout,
 		Write:      cfg.Server.WriteTimeout,
