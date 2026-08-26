@@ -29,7 +29,7 @@ func TestClient_Fetch(t *testing.T) {
 				"totalResults": 100,
 				"articles": [
 					{
-						"title": "Go 1.26 Released",
+						"title": "Go 1.27 Released",
 						"source": { "id": "golang-news", "name": "Go Blog" }
 					}
 				]
@@ -45,7 +45,7 @@ func TestClient_Fetch(t *testing.T) {
 				if len(res.Articles) != 1 {
 					t.Fatalf("expected 1 article, got %d", len(res.Articles))
 				}
-				if res.Articles[0].Title != "Go 1.26 Released" {
+				if res.Articles[0].Title != "Go 1.27 Released" {
 					t.Errorf("unexpected article title: %q", res.Articles[0].Title)
 				}
 				if res.Articles[0].Source.ID == nil || *res.Articles[0].Source.ID != "golang-news" {

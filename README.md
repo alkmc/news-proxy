@@ -35,7 +35,7 @@ Alternatively, put the key in an `.env` file next to `compose.yaml`, Docker Comp
 
 ### Option 2: Build from source
 
-Requires Go 1.26+:
+Requires Go 1.27+:
 
 ```bash
 export NEWS_API_KEY="your_api_key_here"
