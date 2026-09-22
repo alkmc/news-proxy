@@ -154,6 +154,19 @@ func TestRouter_HTMXPartial(t *testing.T) {
 	}
 }
 
+func TestIndexFingerprintsAssets(t *testing.T) {
+	t.Parallel()
+
+	ts := testServer(t, &mockNewsClient{})
+	_, _, body := get(t, ts, "/")
+
+	for _, asset := range []string{"style.css", "favicon.svg", "htmx.min.js", "theme.js"} {
+		if !strings.Contains(body, "/static/"+asset+"?v=") {
+			t.Errorf("expected %s to carry a cache busting hash, got %q", asset, body)
+		}
+	}
+}
+
 // serveRouter builds the full router with the real template and a mock client.
 func testServer(t *testing.T, client fetcher) *httptest.Server {
 	t.Helper()
