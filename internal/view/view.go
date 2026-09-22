@@ -2,18 +2,24 @@ package view
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"html/template"
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"path"
 	"sync"
 	"syscall"
 	"time"
 )
 
-// resultsBlock is the template block swapped into the page on htmx requests.
-const resultsBlock = "results"
+const (
+	// resultsBlock is the template block swapped into the page on htmx requests.
+	resultsBlock = "results"
+	staticDir    = "static"
+)
 
 var bufPool = sync.Pool{
 	New: func() any {
@@ -32,11 +38,35 @@ func NewRenderer(tpl *template.Template, logger *slog.Logger) *Renderer {
 	return &Renderer{tpl: tpl, logger: logger}
 }
 
-// ParseTemplate parses the index template from fsys with the app's template functions.
-func ParseTemplate(fsys fs.FS) (*template.Template, error) {
+// ParseTemplate parses the index template with the app's template functions.
+func ParseTemplate(tplFS, staticFS fs.FS) (*template.Template, error) {
+	asset, err := assetURL(staticFS)
+	if err != nil {
+		return nil, err
+	}
 	return template.New("index.html").
-		Funcs(template.FuncMap{"formatDate": formatDate}).
-		ParseFS(fsys, "template/index.html")
+		Funcs(template.FuncMap{"formatDate": formatDate, "asset": asset}).
+		ParseFS(tplFS, "template/index.html")
+}
+
+// assetURL builds a helper that fingerprints static URLs so a changed file never comes from cache.
+func assetURL(staticFS fs.FS) (func(string) string, error) {
+	entries, err := fs.ReadDir(staticFS, staticDir)
+	if err != nil {
+		return nil, err
+	}
+	hashes := make(map[string]string, len(entries))
+	for _, e := range entries {
+		b, err := fs.ReadFile(staticFS, path.Join(staticDir, e.Name()))
+		if err != nil {
+			return nil, err
+		}
+		sum := sha256.Sum256(b)
+		hashes[e.Name()] = hex.EncodeToString(sum[:4])
+	}
+	return func(name string) string {
+		return "/" + staticDir + "/" + name + "?v=" + hashes[name]
+	}, nil
 }
 
 // Render buffers the page for data and writes it with the given status.

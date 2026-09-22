@@ -5,8 +5,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>News App Demo</title>
-  <link rel="stylesheet" href="/static/style.css" />
-  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="{{ asset "style.css" }}" />
+  <link rel="icon" href="{{ asset "favicon.svg" }}" type="image/svg+xml" />
 </head>
 
 <body>
@@ -75,8 +75,8 @@
     {{ end }}
     </div>
   </main>
-  <script src="/static/htmx.min.js?v=4.0.0" defer></script>
-  <script src="/static/theme.js" type="module"></script>
+  <script src="{{ asset "htmx.min.js" }}" defer></script>
+  <script src="{{ asset "theme.js" }}" type="module"></script>
 </body>
 
 </html>

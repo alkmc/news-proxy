@@ -158,7 +158,7 @@ func TestRouter_HTMXPartial(t *testing.T) {
 func testServer(t *testing.T, client fetcher) *httptest.Server {
 	t.Helper()
 
-	tpl, err := view.ParseTemplate(ui.TemplateFS)
+	tpl, err := view.ParseTemplate(ui.TemplateFS, ui.StaticFS)
 	if err != nil {
 		t.Fatal(err)
 	}

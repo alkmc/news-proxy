@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	// staticCachePolicy is the Cache-Control value for static assets (24h).
-	staticCachePolicy = "public, max-age=86400"
+	// staticCachePolicy pins static assets for a year, safe because their URLs carry a content hash.
+	staticCachePolicy = "public, max-age=31536000, immutable"
 
 	// contentSecurityPolicy allows arbitrary external images.
 	contentSecurityPolicy = "default-src 'self'; script-src 'self'; img-src 'self' https: http:; " +
