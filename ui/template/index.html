@@ -21,7 +21,7 @@
       <button id="theme-toggle" class="theme-toggle" aria-label="Toggle colour scheme">🌙</button>
     </header>
     <div id="loading" class="htmx-indicator">Loading...</div>
-    <div id="results">
+    <div id="results" aria-live="polite">
     {{ block "results" . }}
     {{ if . }}
     <section class="container">
