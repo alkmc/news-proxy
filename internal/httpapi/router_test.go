@@ -68,7 +68,7 @@ func TestRouter(t *testing.T) {
 			path:        "/static/style.css",
 			client:      &mockNewsClient{},
 			wantStatus:  http.StatusOK,
-			wantHeaders: map[string]string{"Cache-Control": staticCachePolicy},
+			wantHeaders: map[string]string{"Cache-Control": "public, max-age=31536000, immutable"},
 		},
 		{
 			name:       "static directory listing rejected",
@@ -167,7 +167,7 @@ func TestIndexFingerprintsAssets(t *testing.T) {
 	}
 }
 
-// serveRouter builds the full router with the real template and a mock client.
+// testServer builds the full router with the real template and a mock client.
 func testServer(t *testing.T, client fetcher) *httptest.Server {
 	t.Helper()
 
