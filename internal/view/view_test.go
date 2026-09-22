@@ -25,6 +25,18 @@ func TestAssetURLChangesWithContent(t *testing.T) {
 	}
 }
 
+func TestAssetURLRejectsUnknownAsset(t *testing.T) {
+	t.Parallel()
+
+	asset, err := assetURL(fstest.MapFS{"static/style.css": {Data: []byte("body{}")}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := asset("missing.js"); err == nil {
+		t.Error("expected an error for an asset that is not embedded")
+	}
+}
+
 func styleURLFor(t *testing.T, content string) string {
 	t.Helper()
 
@@ -32,5 +44,9 @@ func styleURLFor(t *testing.T, content string) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return asset("style.css")
+	u, err := asset("style.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return u
 }

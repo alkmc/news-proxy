@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"html/template"
 	"io/fs"
 	"log/slog"
@@ -50,22 +51,26 @@ func ParseTemplate(tplFS, staticFS fs.FS) (*template.Template, error) {
 }
 
 // assetURL builds a helper that fingerprints static URLs so a changed file never comes from cache.
-func assetURL(staticFS fs.FS) (func(string) string, error) {
+func assetURL(staticFS fs.FS) (func(string) (string, error), error) {
 	entries, err := fs.ReadDir(staticFS, staticDir)
 	if err != nil {
 		return nil, err
 	}
-	hashes := make(map[string]string, len(entries))
+	urls := make(map[string]string, len(entries))
 	for _, e := range entries {
 		b, err := fs.ReadFile(staticFS, path.Join(staticDir, e.Name()))
 		if err != nil {
 			return nil, err
 		}
 		sum := sha256.Sum256(b)
-		hashes[e.Name()] = hex.EncodeToString(sum[:4])
+		urls[e.Name()] = "/" + staticDir + "/" + e.Name() + "?v=" + hex.EncodeToString(sum[:4])
 	}
-	return func(name string) string {
-		return "/" + staticDir + "/" + name + "?v=" + hashes[name]
+	return func(name string) (string, error) {
+		u, ok := urls[name]
+		if !ok {
+			return "", fmt.Errorf("unknown static asset %q", name)
+		}
+		return u, nil
 	}, nil
 }
 
