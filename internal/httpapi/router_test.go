@@ -68,7 +68,7 @@ func TestRouter(t *testing.T) {
 			path:        "/static/style.css",
 			client:      &mockNewsClient{},
 			wantStatus:  http.StatusOK,
-			wantHeaders: map[string]string{"Cache-Control": staticCachePolicy},
+			wantHeaders: map[string]string{"Cache-Control": "public, max-age=31536000, immutable"},
 		},
 		{
 			name:       "static directory listing rejected",
@@ -154,11 +154,24 @@ func TestRouter_HTMXPartial(t *testing.T) {
 	}
 }
 
-// serveRouter builds the full router with the real template and a mock client.
+func TestIndexFingerprintsAssets(t *testing.T) {
+	t.Parallel()
+
+	ts := testServer(t, &mockNewsClient{})
+	_, _, body := get(t, ts, "/")
+
+	for _, asset := range []string{"style.css", "favicon.svg", "htmx.min.js", "theme.js"} {
+		if !strings.Contains(body, "/static/"+asset+"?v=") {
+			t.Errorf("expected %s to carry a cache busting hash, got %q", asset, body)
+		}
+	}
+}
+
+// testServer builds the full router with the real template and a mock client.
 func testServer(t *testing.T, client fetcher) *httptest.Server {
 	t.Helper()
 
-	tpl, err := view.ParseTemplate(ui.TemplateFS)
+	tpl, err := view.ParseTemplate(ui.TemplateFS, ui.StaticFS)
 	if err != nil {
 		t.Fatal(err)
 	}

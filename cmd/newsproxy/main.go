@@ -34,7 +34,7 @@ func main() {
 }
 
 func run(logger *slog.Logger, cfg config.Config) error {
-	tpl, err := view.ParseTemplate(ui.TemplateFS)
+	tpl, err := view.ParseTemplate(ui.TemplateFS, ui.StaticFS)
 	if err != nil {
 		return fmt.Errorf("failed to parse template: %w", err)
 	}
