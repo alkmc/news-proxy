@@ -10,7 +10,8 @@
 </head>
 
 <body>
-  <main hx-target:inherited="#results" hx-push-url:inherited="true" hx-indicator:inherited="#loading">
+  <main hx-target:inherited="#results" hx-push-url:inherited="true" hx-indicator:inherited="#loading"
+    hx-sync:inherited="this:replace">
     <header>
       <a class="logo" href="/">News Demo</a>
       <form action="/search" method="GET" hx-get="/search">
