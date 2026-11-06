@@ -9,8 +9,8 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-w -s" -o news-proxy ./cmd/newsproxy
 
 FROM gcr.io/distroless/base-debian13
-COPY --from=builder --chown=nonroot:nonroot /app/news-proxy /news-proxy
+COPY --from=builder /app/news-proxy /news-proxy
 
-USER nonroot:nonroot
+USER 65532:65532
 
 CMD ["/news-proxy"]
