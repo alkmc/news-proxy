@@ -9,13 +9,17 @@ run:
 linters:
   default: standard
   enable:
+    - asasalint
     - asciicheck
     - bidichk
     - bodyclose
     - canonicalheader
+    - containedctx
     - contextcheck
     - durationcheck
+    - errname
     - errorlint
+    - exhaustive
     - fatcontext
     - forcetypeassert
     - forbidigo
@@ -28,22 +32,28 @@ linters:
     - nilnesserr
     - nilnil
     - noctx
+    - nosprintfhostport
     - perfsprint
     - prealloc
     - predeclared
+    - reassign
+    - recvcheck
     - revive
     - rowserrcheck
     - sloglint
     - sqlclosecheck
     - unparam
     - unconvert
+    - unqueryvet
     - usetesting
     - usestdlibvars
     - wastedassign
   settings:
-    gosec:
-      excludes:
-        - G704
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment
+        - shadow
     lll:
       line-length: 110
       tab-width: 1
@@ -61,5 +71,17 @@ linters:
 
 formatters:
   enable:
+    - gci
     - gofumpt
     - goimports
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+    gofumpt:
+      extra:
+        group-params: true
+        clothe-returns: true
+        balance-calls: true
+

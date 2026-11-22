@@ -1,4 +1,4 @@
-.PHONY: build run test fmt deadcode lint clean docker-build up down
+.PHONY: build run test fmt deadcode lint fix dockerize up down
 
 BINARY_NAME=news-proxy
 
@@ -12,20 +12,18 @@ test:
 	go test -v -race ./...
 
 fmt:
-	gofumpt -l -w .
+	golangci-lint fmt
 
 deadcode:
-	go run golang.org/x/tools/cmd/deadcode@v0.50.0 ./...
+	go run golang.org/x/tools/cmd/deadcode@v0.53.0 -test ./...
 
 lint:
 	golangci-lint run
 
-clean:
-	go clean
-	rm -f ${BINARY_NAME}
+fix: 
+	go fix ./... && golangci-lint run --fix
 
-# Docker commands
-docker-build:
+dockerize:
 	docker compose build
 
 up:
