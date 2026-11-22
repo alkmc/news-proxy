@@ -1,12 +1,10 @@
 .PHONY: build run test fmt deadcode lint fix dockerize up down
 
-BINARY_NAME=news-proxy
-
 build:
-	go build -o ${BINARY_NAME} ./cmd/newsproxy
+	go build ./cmd/newsproxy
 
-run: build
-	./${BINARY_NAME}
+run:
+	go run ./cmd/newsproxy
 
 test:
 	go test -v -race ./...
